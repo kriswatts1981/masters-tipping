@@ -816,6 +816,15 @@ tr:hover{background:rgba(255,255,255,.03);}
 .fav-header td{padding:4px 10px!important;background:rgba(255,215,0,.06)!important;border:none!important;font-size:9px;color:rgba(255,215,0,.5);letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,215,0,.1)!important;}
 .fav-separator td{padding:4px 10px!important;background:rgba(0,0,0,.15)!important;border:none!important;font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px;text-transform:uppercase;border-top:1px solid rgba(255,215,0,.1)!important;border-bottom:1px solid rgba(255,215,0,.1)!important;}
 
+/* Fun facts ticker — uses JS to set width for mobile compatibility */
+.ticker-wrap{width:100%;overflow:hidden;position:relative;}
+.ticker{display:inline-block;white-space:nowrap;-webkit-animation:ticker-scroll 180s linear infinite;animation:ticker-scroll 180s linear infinite;}
+.ticker:hover{-webkit-animation-play-state:paused;animation-play-state:paused;}
+.ticker-item{display:inline-block;padding:0 28px;font-size:12px;color:rgba(255,255,255,.55);font-family:'Inter',sans-serif;white-space:nowrap;vertical-align:middle;}
+.ticker-item::before{content:'\25CF';color:#ffd700;font-size:5px;margin-right:10px;vertical-align:middle;}
+@-webkit-keyframes ticker-scroll{from{-webkit-transform:translateX(0)}to{-webkit-transform:translateX(-50%)}}
+@keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
 .footer{text-align:center;padding:16px;font-size:10px;color:rgba(255,255,255,.2);letter-spacing:.5px;}
 .empty{text-align:center;padding:40px;color:rgba(255,255,255,.3);}
 .empty p{margin-bottom:6px;}
@@ -917,20 +926,32 @@ tr:hover{background:rgba(255,255,255,.03);}
   <div class="stat"><div class="val">{{ data.config.payout_places }}</div><div class="lbl">Paid Places</div></div>
 </div>
 
-<!-- Fun Facts Ticker -->
+<!-- Fun Facts -->
 {% if data.fun_facts %}
-<div style="overflow:hidden;background:rgba(0,0,0,.2);border-bottom:1px solid rgba(255,215,0,.1);padding:8px 0;">
-  <div class="ticker-wrap">
-    <div class="ticker">
-      {% for fact in data.fun_facts %}
-      <span class="ticker-item">{{ fact }}</span>
-      {% endfor %}
-      {% for fact in data.fun_facts %}
-      <span class="ticker-item">{{ fact }}</span>
-      {% endfor %}
-    </div>
+<div style="background:rgba(0,0,0,.2);border-bottom:1px solid rgba(255,215,0,.1);padding:10px 20px;">
+  <div id="funFact" style="font-size:12px;color:rgba(255,255,255,.55);font-family:Inter,sans-serif;text-align:center;min-height:18px;">
+    <span style="color:#ffd700;margin-right:8px;">&#9679;</span>
+    <span id="funFactText"></span>
   </div>
 </div>
+<script>
+(function(){
+  var facts={{ data.fun_facts | tojson }};
+  var i=0;
+  var el=document.getElementById('funFactText');
+  if(!el||!facts.length)return;
+  el.textContent=facts[0];
+  setInterval(function(){
+    i=(i+1)%facts.length;
+    el.style.opacity='0';
+    setTimeout(function(){
+      el.textContent=facts[i];
+      el.style.opacity='1';
+    },400);
+  },6000);
+  el.style.transition='opacity 0.4s ease';
+})();
+</script>
 {% endif %}
 
 <div class="container">
@@ -1073,24 +1094,24 @@ tr:hover{background:rgba(255,255,255,.03);}
         <thead>
           <tr>
             <th style="padding:6px 10px;">Player</th>
-            <th class="r" style="padding:6px 10px;">Odds</th>
-            <th class="r" style="padding:6px 10px;">Score</th>
-            <th class="r" style="padding:6px 10px;">Picked</th>
+            <th class="r" style="padding:6px 4px;width:36px;">Odds</th>
+            <th class="r" style="padding:6px 4px;width:40px;">Score</th>
+            <th class="r" style="padding:6px 6px;white-space:nowrap;">Picked</th>
           </tr>
         </thead>
         <tbody>
         {% for o in data.odds if o.pool == pool_num %}
         <tr{% if o.cut %} style="opacity:.4"{% endif %}>
           <td style="padding:5px 10px;font-weight:500;">{{ o.player }}</td>
-          <td class="r" style="padding:5px 10px;color:rgba(255,255,255,.5);">${{ "%.0f"|format(o.odds) }}</td>
-          <td class="r" style="padding:5px 10px;">
+          <td class="r" style="padding:5px 4px;color:rgba(255,255,255,.5);">${{ "%.0f"|format(o.odds) }}</td>
+          <td class="r" style="padding:5px 4px;">
             {% if o.tournament_score is not none %}
             <span class="sc {% if o.tournament_score < 0 %}under{% elif o.tournament_score == 0 %}even{% else %}over{% endif %}">
               {% if o.tournament_score > 0 %}+{% endif %}{{ o.tournament_score if o.tournament_score != 0 else 'E' }}{% if o.cut %} CUT{% endif %}
             </span>
             {% else %}-{% endif %}
           </td>
-          <td class="r" style="padding:5px 10px;">
+          <td class="r" style="padding:5px 6px;white-space:nowrap;">
             {% if o.pick_count > 0 %}
             <span style="color:#ffd700;font-weight:600;">{{ o.pick_count }}</span>
             <span style="color:rgba(255,255,255,.25);font-size:9px;">({{ ((o.pick_count / data.total_entries) * 100)|round(1) }}%)</span>
