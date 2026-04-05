@@ -609,7 +609,7 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 .grid-2>div{display:flex;flex-direction:column;}
 .grid-2>div>.card:last-child{flex:1;display:flex;flex-direction:column;}
 .grid-2>div>.card:last-child>.scroll-table{flex:1;max-height:none;}
-@media(max-width:1400px){.hide-narrow{display:none!important;}}
+@media(max-width:1600px){.hide-narrow{display:none!important;}}
 @media(max-width:1024px){.grid-2{grid-template-columns:1fr;}.hide-narrow{display:table-cell!important;}}
 @media(max-width:768px){
   .hero-content{padding:14px 12px 10px;}
@@ -693,7 +693,7 @@ tr:hover{background:rgba(255,255,255,.03);}
 
 /* Tipping table */
 .pos-num{font-weight:700;color:#ffd700;}
-.punter{font-weight:600;font-size:13px;white-space:nowrap;}
+.punter{font-weight:600;font-size:13px;white-space:nowrap;width:180px;max-width:180px;}
 .payout-row{background:rgba(255,215,0,.04);}
 .money{color:#ffd700;font-weight:700;}
 .pick-cell{font-size:11px;white-space:nowrap;}
