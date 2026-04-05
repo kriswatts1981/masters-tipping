@@ -205,7 +205,8 @@ def fetch_leaderboard():
         rounds = []
         for ls in linescores:
             val = ls.get("value", 0)
-            rounds.append(int(val) if val else 0)
+            if val:
+                rounds.append(int(val))
 
         # Calculate score after R2 (for cut rule)
         r2_total = sum(rounds[:2]) if len(rounds) >= 2 else total_score
