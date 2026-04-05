@@ -40,6 +40,9 @@ _weather_cache = {"data": None, "ts": 0}
 CACHE_TTL = 60  # refresh every 60 seconds
 WEATHER_TTL = 600  # refresh weather every 10 minutes
 
+# Round-end standings cache — persisted to disk so it survives restarts
+ROUND_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "round_standings.json")
+
 # Augusta National: 33.47°N, 81.97°W, timezone America/New_York
 AUGUSTA_LAT = 33.47
 AUGUSTA_LON = -81.97
@@ -67,6 +70,22 @@ def load_odds():
         with open(ODDS_FILE) as f:
             return json.load(f)
     return []
+
+
+def load_round_standings():
+    """Load previously saved round-end standings from disk."""
+    if os.path.exists(ROUND_CACHE_FILE):
+        with open(ROUND_CACHE_FILE) as f:
+            return json.load(f)
+    return {}
+
+
+def save_round_standings(round_num, positions):
+    """Save end-of-round positions to disk. positions = {punter_name: position}"""
+    data = load_round_standings()
+    data[str(round_num)] = positions
+    with open(ROUND_CACHE_FILE, "w") as f:
+        json.dump(data, f)
 
 
 def fetch_weather():
@@ -411,35 +430,52 @@ def calculate_standings():
         popular_players.append((name, cnt, pct))
     popular_players.sort(key=lambda x: x[1], reverse=True)
 
-    # Calculate movers: compare R2-only standings to current standings
-    # Build R2-only totals for each punter
-    r2_results = []
-    for p in punter_results:
-        r2_total = 0
-        for pl in p["players"]:
-            # Sum only first 2 round scores for each player
-            rounds = pl.get("rounds", [])
-            if len(rounds) >= 2:
-                r2_total += rounds[0] + rounds[1]
-            else:
-                r2_total += pl["score"]
-        r2_results.append({"name": p["name"], "r2_total": r2_total})
+    # Calculate movers: compare current position vs end of previous round
+    current_round = lb.get("current_round", 0)
+    round_standings = load_round_standings()
 
-    # Sort R2 results and assign R2 positions
-    r2_results.sort(key=lambda x: x["r2_total"])
-    r2_positions = {}
-    r2_pos = 1
-    for i, r in enumerate(r2_results):
-        if i > 0 and r["r2_total"] == r2_results[i - 1]["r2_total"]:
-            r2_positions[r["name"]] = r2_positions[r2_results[i - 1]["name"]]
-        else:
-            r2_positions[r["name"]] = r2_pos
-        r2_pos = i + 2
+    # Build current positions dict
+    current_positions = {p["name"]: p["position"] for p in punter_results}
+
+    # Save current standings as the latest round snapshot
+    # (will be "previous round" next time a new round starts)
+    if current_round > 0:
+        save_round_standings(current_round, current_positions)
+
+    # Find the previous round's standings to compare against
+    prev_round = str(current_round - 1) if current_round > 1 else None
+    prev_positions = round_standings.get(prev_round, {}) if prev_round else {}
+
+    # If no previous round data, fall back to per-round score calculation
+    if not prev_positions:
+        # Calculate standings using scores through previous round only
+        prev_round_num = max(current_round - 1, 1)
+        prev_results = []
+        for p in punter_results:
+            prev_total = 0
+            for pl in p["players"]:
+                rounds = pl.get("rounds", [])
+                # Sum only rounds up to prev_round_num
+                for r_idx in range(min(prev_round_num, len(rounds))):
+                    prev_total += rounds[r_idx]
+                if not rounds:
+                    prev_total += pl["score"]
+            prev_results.append({"name": p["name"], "prev_total": prev_total})
+
+        prev_results.sort(key=lambda x: x["prev_total"])
+        prev_pos = 1
+        for i, r in enumerate(prev_results):
+            if i > 0 and r["prev_total"] == prev_results[i - 1]["prev_total"]:
+                prev_positions[r["name"]] = prev_positions[prev_results[i - 1]["name"]]
+            else:
+                prev_positions[r["name"]] = prev_pos
+            prev_pos = i + 2
 
     # Assign mover field (positive = moved up, negative = moved down)
+    mover_label = f"vs R{current_round - 1}" if current_round > 1 else ""
     for p in punter_results:
-        r2_rank = r2_positions.get(p["name"], p["position"])
-        p["mover"] = r2_rank - p["position"]
+        prev_rank = prev_positions.get(p["name"], p["position"])
+        p["mover"] = prev_rank - p["position"]
 
     # Load odds and enrich with pick counts + tournament score
     # Build a normalized lookup for picked_by so accent-insensitive matching works
@@ -473,6 +509,7 @@ def calculate_standings():
         "popular_players": popular_players,
         "odds": odds,
         "weather": fetch_weather(),
+        "mover_label": mover_label,
         "prize_pool": prize_pool,
         "total_entries": total_entries,
         "payouts": payouts,
@@ -540,44 +577,58 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 @media(max-width:1400px){.hide-narrow{display:none!important;}}
 @media(max-width:1024px){.grid-2{grid-template-columns:1fr;}.hide-narrow{display:table-cell!important;}}
 @media(max-width:768px){
-  .hero-content{padding:20px 12px 16px;}
-  .hero h1{font-size:24px;}
+  .hero-content{padding:14px 12px 10px;}
+  .hero h1{font-size:22px;}
+  .hero-logo{gap:10px;}
+  .hero-flag-icon{width:28px;height:34px;}
+  .hero-flag-icon .flag{width:14px;height:10px;}
+  .hero .sub{font-size:12px;}
   .hero-bg::before{display:none;}
   .hero-bg::after{display:none;}
-  .scoreboard-strip{padding:6px 8px;gap:2px;}
-  .sb-cell{min-width:44px;padding:4px 2px;}
-  .sb-cell .sb-name{font-size:7px;max-width:44px;}
-  .sb-cell .sb-score{font-size:12px;}
+  .scoreboard-strip{padding:6px 4px;gap:2px;justify-content:flex-start;}
+  .sb-cell{min-width:48px;padding:4px 3px;}
+  .sb-cell .sb-name{font-size:8px;max-width:48px;}
+  .sb-cell .sb-score{font-size:13px;}
   .stats{gap:8px 16px;padding:10px 8px;}
   .stat .val{font-size:16px;}
   .stat .lbl{font-size:7px;letter-spacing:.5px;}
   .container{padding:8px;}
-  .card{margin-bottom:12px;border-radius:6px;}
-  .card-title{padding:10px 12px;font-size:12px;}
+  .card{margin-bottom:10px;border-radius:6px;}
+  .card-title{padding:8px 10px;font-size:12px;}
   .card-title .badge{font-size:9px;padding:2px 7px;}
-  .search{padding:6px 10px;}
+  .search{padding:6px 8px;}
   .search input{padding:6px 10px;font-size:12px;}
-  th{padding:5px 6px;font-size:8px;}
-  td{padding:4px 6px;font-size:10px;}
-  .punter{font-size:10px;}
-  .pick-cell{font-size:9px;}
-  .pick-cell .pick-name{font-size:9px;}
-  .pick-cell .pick-score{font-size:8px;}
-  .pos-num{font-size:10px;}
+  th{padding:5px 4px;font-size:7px;letter-spacing:.8px;}
+  td{padding:5px 4px;font-size:11px;}
+  .punter{font-size:11px;}
+  .pos-num{font-size:10px;min-width:18px;}
   .sc{font-size:11px!important;}
-  .scroll-table{max-height:500px;}
+  .scroll-table{max-height:none;}
+  /* Tipping table: hide pool columns on mobile, show compact view */
+  .pick-col{display:none!important;}
+  #leaderboardTable{min-width:0!important;}
+  .money{font-size:11px;}
+  /* Tournament leaderboard */
   .tlb-name{font-size:11px;}
-  .tlb-picked{font-size:8px;padding:1px 4px;}
+  .tlb-picked{font-size:7px;padding:1px 3px;}
   .tlb-rounds{font-size:9px;}
   .tlb-thru{font-size:9px;}
+  .tlb-pos{font-size:10px;min-width:18px;}
   .footer{font-size:9px;padding:12px 8px;}
   /* Hide less important columns on mobile */
   .hide-mobile{display:none!important;}
   .hide-narrow{display:none!important;}
   /* Weather bar stacks */
-  .weather-bar{flex-direction:column;gap:4px!important;padding:6px 12px!important;}
-  .weather-bar .weather-left{gap:8px!important;}
-  .weather-bar .weather-right{gap:10px!important;font-size:11px!important;flex-wrap:wrap;}
+  .weather-bar{flex-direction:column;gap:4px!important;padding:6px 10px!important;font-size:11px!important;}
+  /* Popular players smaller cards */
+  .popular-card{min-width:100px!important;padding:8px 10px!important;}
+  .popular-card .pop-score{font-size:18px!important;}
+  .popular-card .pop-name{font-size:9px!important;}
+  .popular-card .pop-first{font-size:10px!important;}
+  .popular-card .pop-picks{font-size:9px!important;}
+  .popular-card .pop-pct{font-size:8px!important;}
+  /* Pools grid stacks */
+  .pools-grid{grid-template-columns:1fr!important;}
 }
 
 /* Cards */
@@ -737,15 +788,15 @@ tr:hover{background:rgba(255,255,255,.03);}
 {% if data.popular_players %}
 <div class="card" style="margin-bottom:20px;">
   <div class="card-title">Most Selected Players <span class="badge">who's backing who</span></div>
-  <div style="display:flex;gap:8px;padding:14px 16px;overflow-x:auto;">
+  <div style="display:flex;gap:8px;padding:12px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;">
     {% for name, count, pct in data.popular_players[:10] %}
     {% set pl = data.leaderboard.players.get(name, {}) %}
-    <div style="flex:0 0 auto;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:12px 16px;min-width:130px;text-align:center;">
-      <div style="font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;">{{ name.split(' ')[-1] }}</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;">{{ name.split(' ')[0] }}</div>
-      <div class="sc {% if pl.get('score',0) < 0 %}under{% elif pl.get('score',0) == 0 %}even{% else %}over{% endif %}" style="font-size:22px;margin:6px 0 4px;">{% if pl.get('score',0) > 0 %}+{% endif %}{{ pl.get('score',0) if pl.get('score',0) != 0 else 'E' }}</div>
-      <div style="font-size:10px;color:#ffd700;font-weight:600;">{{ count }} picks</div>
-      <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;">{{ pct }}% of entries</div>
+    <div class="popular-card" style="flex:0 0 auto;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;">
+      <div class="pop-name" style="font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;">{{ name.split(' ')[-1] }}</div>
+      <div class="pop-first" style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;">{{ name.split(' ')[0] }}</div>
+      <div class="pop-score sc {% if pl.get('score',0) < 0 %}under{% elif pl.get('score',0) == 0 %}even{% else %}over{% endif %}" style="font-size:22px;margin:6px 0 4px;">{% if pl.get('score',0) > 0 %}+{% endif %}{{ pl.get('score',0) if pl.get('score',0) != 0 else 'E' }}</div>
+      <div class="pop-picks" style="font-size:10px;color:#ffd700;font-weight:600;">{{ count }} picks</div>
+      <div class="pop-pct" style="font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;">{{ pct }}%</div>
     </div>
     {% endfor %}
   </div>
@@ -767,14 +818,14 @@ tr:hover{background:rgba(255,255,255,.03);}
     <thead>
       <tr>
         <th style="width:20px;padding-right:0">#</th>
-        <th style="width:28px;padding-left:0" class="c"></th>
+        <th style="width:28px;padding-left:0" class="c" title="Position change vs previous round">{% if data.mover_label %}{{ data.mover_label }}{% endif %}</th>
         <th>Punter</th>
         <th class="c" style="width:38px">Score</th>
-        <th>Pool 1</th>
-        <th>Pool 2</th>
-        <th>Pool 3</th>
-        <th>Pool 4</th>
-        <th>Pool 5</th>
+        <th class="pick-col">Pool 1</th>
+        <th class="pick-col">Pool 2</th>
+        <th class="pick-col">Pool 3</th>
+        <th class="pick-col">Pool 4</th>
+        <th class="pick-col">Pool 5</th>
         <th class="r" style="width:60px">Payout</th>
       </tr>
     </thead>
@@ -786,9 +837,9 @@ tr:hover{background:rgba(255,255,255,.03);}
       <td class="punter">{{ p.name }}</td>
       <td class="c"><span class="sc {% if p.total < 0 %}under{% elif p.total == 0 %}even{% else %}over{% endif %}" style="font-size:14px;">{% if p.total > 0 %}+{% endif %}{{ p.total if p.total != 0 else 'E' }}</span></td>
       {% for pl in p.players %}
-      <td class="pick-cell"><span class="pick-name {% if pl.cut %}cut-txt{% elif pl.capped %}cap-txt{% endif %}">{{ pl.name.split(' ')[-1] }}</span> <span class="pick-score sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.capped %}*{% endif %}{% if pl.cut %} CUT{% endif %}</span></td>
+      <td class="pick-cell pick-col"><span class="pick-name {% if pl.cut %}cut-txt{% elif pl.capped %}cap-txt{% endif %}">{{ pl.name.split(' ')[-1] }}</span> <span class="pick-score sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.capped %}*{% endif %}{% if pl.cut %} CUT{% endif %}</span></td>
       {% endfor %}
-      {% for _ in range(5 - p.players|length) %}<td class="pick-cell">-</td>{% endfor %}
+      {% for _ in range(5 - p.players|length) %}<td class="pick-cell pick-col">-</td>{% endfor %}
       <td class="r money">{% if p.payout > 0 %}<strong>${{ "{:,.0f}".format(p.payout) }}</strong>{% endif %}</td>
     </tr>
     {% endfor %}
@@ -847,7 +898,7 @@ tr:hover{background:rgba(255,255,255,.03);}
 {% if data.odds %}
 <div class="card" style="margin-top:20px;">
   <div class="card-title">Player Pools & Odds <span class="badge">Sportsbet</span></div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0;border-top:1px solid rgba(255,255,255,.06);">
+  <div class="pools-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0;border-top:1px solid rgba(255,255,255,.06);">
     {% set pools = {1: 'Pool 1 (Top 14)', 2: 'Pool 2 (15-34)', 3: 'Pool 3 (35-64)', 4: 'Pool 4 (65-90)'} %}
     {% for pool_num in [1,2,3,4] %}
     <div style="border-right:1px solid rgba(255,255,255,.04);{% if pool_num > 2 %}border-top:1px solid rgba(255,255,255,.04);{% endif %}">
