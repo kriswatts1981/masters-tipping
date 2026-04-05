@@ -200,8 +200,8 @@ def fetch_leaderboard():
             except (ValueError, TypeError):
                 total_score = 0
 
-        # Round scores
-        linescores = c.get("linescores", [])
+        # Round scores (cap at 4 rounds — ESPN may include extra linescores)
+        linescores = c.get("linescores", [])[:4]
         rounds = []
         for ls in linescores:
             val = ls.get("value", 0)
