@@ -685,6 +685,13 @@ tr:hover{background:rgba(255,255,255,.03);}
 .tab:hover{color:rgba(255,255,255,.7);}
 .tab.active{color:#ffd700;border-bottom-color:#ffd700;}
 
+/* Favourites */
+.fav-star{cursor:pointer;font-size:12px;color:rgba(255,255,255,.15);transition:color .15s;vertical-align:middle;margin-right:2px;}
+.fav-star:hover{color:rgba(255,215,0,.5);}
+.fav-star.active{color:#ffd700;}
+.fav-row{background:rgba(255,215,0,.03)!important;}
+.fav-separator td{padding:0!important;height:2px;background:rgba(255,215,0,.15)!important;border:none!important;}
+
 .footer{text-align:center;padding:16px;font-size:10px;color:rgba(255,255,255,.2);letter-spacing:.5px;}
 .empty{text-align:center;padding:40px;color:rgba(255,255,255,.3);}
 .empty p{margin-bottom:6px;}
@@ -835,10 +842,10 @@ tr:hover{background:rgba(255,255,255,.03);}
     </thead>
     <tbody>
     {% for p in data.punters %}
-    <tr class="{% if p.payout > 0 %}payout-row{% endif %}" data-search="{{ p.name|lower }} {% for pl in p.players %}{{ pl.name|lower }} {% endfor %}">
+    <tr class="{% if p.payout > 0 %}payout-row{% endif %}" data-search="{{ p.name|lower }} {% for pl in p.players %}{{ pl.name|lower }} {% endfor %}" data-punter="{{ p.name }}">
       <td style="padding-right:0"><span class="pos-num">{{ p.position }}</span></td>
       <td class="c" style="font-size:10px;font-weight:700;padding-left:0;">{% if p.mover > 0 %}<span style="color:#4ade80;">&#9650;{{ p.mover }}</span>{% elif p.mover < 0 %}<span style="color:#f87171;">&#9660;{{ p.mover|abs }}</span>{% else %}<span style="color:rgba(255,255,255,.25);">-</span>{% endif %}</td>
-      <td class="punter">{{ p.name }}</td>
+      <td class="punter"><span class="fav-star" onclick="toggleFav(this)" title="Add to favourites">&#9734;</span> {{ p.name }}</td>
       <td class="c"><span class="sc {% if p.total < 0 %}under{% elif p.total == 0 %}even{% else %}over{% endif %}" style="font-size:14px;">{% if p.total > 0 %}+{% endif %}{{ p.total if p.total != 0 else 'E' }}</span></td>
       {% for pl in p.players %}
       <td class="pick-cell pick-col"><span class="pick-name {% if pl.cut %}cut-txt{% elif pl.capped %}cap-txt{% endif %}">{{ pl.name.split(' ')[-1] }}</span> <span class="pick-score sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.capped %}*{% endif %}{% if pl.cut %} CUT{% endif %}</span></td>
@@ -957,9 +964,67 @@ tr:hover{background:rgba(255,255,255,.03);}
 </div>
 
 <script>
+// Favourites — stored in localStorage
+function getFavs(){try{return JSON.parse(localStorage.getItem('masters_favs')||'[]');}catch(e){return[];}}
+function saveFavs(f){localStorage.setItem('masters_favs',JSON.stringify(f));}
+
+function toggleFav(el){
+  var tr=el.closest('tr');
+  var name=tr.dataset.punter;
+  var favs=getFavs();
+  var idx=favs.indexOf(name);
+  if(idx>=0){favs.splice(idx,1);el.classList.remove('active');el.innerHTML='&#9734;';}
+  else{favs.push(name);el.classList.add('active');el.innerHTML='&#9733;';}
+  saveFavs(favs);
+  reorderFavs();
+}
+
+function reorderFavs(){
+  var tbody=document.querySelector('#leaderboardTable tbody');
+  if(!tbody)return;
+  var favs=getFavs();
+  // Remove old separator
+  var old=tbody.querySelector('.fav-separator');
+  if(old)old.remove();
+  // Reset fav-row styling
+  tbody.querySelectorAll('tr').forEach(function(tr){tr.classList.remove('fav-row');});
+  if(!favs.length)return;
+  // Move fav rows to top (preserve their relative order)
+  var rows=Array.from(tbody.querySelectorAll('tr[data-punter]'));
+  var favRows=[];var otherRows=[];
+  rows.forEach(function(tr){
+    if(favs.indexOf(tr.dataset.punter)>=0){favRows.push(tr);tr.classList.add('fav-row');}
+    else{otherRows.push(tr);}
+  });
+  // Create separator
+  if(favRows.length&&otherRows.length){
+    var sep=document.createElement('tr');
+    sep.className='fav-separator';
+    var cols=rows[0]?rows[0].children.length:5;
+    sep.innerHTML='<td colspan="'+cols+'"></td>';
+    favRows.forEach(function(r){tbody.appendChild(r);});
+    tbody.appendChild(sep);
+    otherRows.forEach(function(r){tbody.appendChild(r);});
+  }
+}
+
+// Init: mark saved favs and reorder on page load
+(function(){
+  var favs=getFavs();
+  if(!favs.length)return;
+  document.querySelectorAll('#leaderboardTable tbody tr[data-punter]').forEach(function(tr){
+    if(favs.indexOf(tr.dataset.punter)>=0){
+      var star=tr.querySelector('.fav-star');
+      if(star){star.classList.add('active');star.innerHTML='&#9733;';}
+    }
+  });
+  reorderFavs();
+})();
+
 function filterTable(){
   const q=document.getElementById('searchInput').value.toLowerCase();
   document.querySelectorAll('#leaderboardTable tbody tr').forEach(tr=>{
+    if(tr.classList.contains('fav-separator')){tr.style.display=q?'none':'';return;}
     tr.style.display=(tr.dataset.search||'').includes(q)?'':'none';
   });
 }
