@@ -447,7 +447,8 @@ def calculate_standings():
     payouts = payouts_per_pos
 
     # Build sorted tournament leaderboard for display
-    tournament_lb = sorted(players.values(), key=lambda x: x["score"])
+    # Sort: made-cut players by score first, then cut players by score
+    tournament_lb = sorted(players.values(), key=lambda x: (x["cut"], x["score"]))
 
     # Track which players are picked and by how many punters
     picked_by = {}
@@ -535,6 +536,92 @@ def calculate_standings():
             o["position"] = ""
             o["cut"] = False
 
+    # Generate fun facts
+    fun_facts = []
+    if punter_results:
+        # Most popular player
+        if popular_players:
+            top_p = popular_players[0]
+            fun_facts.append(f"{top_p[0]} is the most popular pick — selected by {top_p[1]:,} entries ({top_p[2]}%)")
+
+        # Least popular picked player (min picks > 0)
+        least = [p for p in popular_players if p[1] > 0]
+        if least:
+            bottom = least[-1]
+            fun_facts.append(f"{bottom[0]} is the hipster pick — only {bottom[1]} entries backed them")
+
+        # Biggest mover up today
+        best_mover = max(punter_results, key=lambda x: x.get("mover", 0))
+        if best_mover["mover"] > 0:
+            fun_facts.append(f"{best_mover['name']} is today's biggest mover — climbed {best_mover['mover']:,} places")
+
+        # Biggest drop
+        worst_mover = min(punter_results, key=lambda x: x.get("mover", 0))
+        if worst_mover["mover"] < 0:
+            fun_facts.append(f"{worst_mover['name']} had the toughest day — dropped {abs(worst_mover['mover']):,} places")
+
+        # Just missed the money (bubble)
+        bubble = [p for p in punter_results if p["position"] == cfg["payout_places"] + 1]
+        if bubble:
+            fun_facts.append(f"{bubble[0]['name']} is the bubble — just missed the money at position {bubble[0]['position']}")
+
+        # Worst total score
+        worst_punter = punter_results[-1]
+        fun_facts.append(f"{worst_punter['name']} brings up the rear at +{worst_punter['total']}" if worst_punter["total"] > 0 else f"{worst_punter['name']} is last at {worst_punter['total']}")
+
+        # Best score in a single pick
+        best_pick_score = None
+        best_pick_name = None
+        for p in punter_results[:50]:  # check top 50
+            for pl in p["players"]:
+                if best_pick_score is None or pl["score"] < best_pick_score:
+                    best_pick_score = pl["score"]
+                    best_pick_name = pl["name"]
+
+        # Winner's payout
+        winner = punter_results[0]
+        fun_facts.append(f"1st place takes home ${winner['payout']:,.0f} from a ${cfg['buy_in']} entry")
+
+        # How many unique player combos
+        combos = set()
+        for p in punter_results:
+            combo = tuple(sorted(pl["name"] for pl in p["players"]))
+            combos.add(combo)
+        fun_facts.append(f"{len(combos):,} unique player combinations across {total_entries:,} entries")
+
+        # Most common duo
+        from collections import Counter
+        duos = Counter()
+        for p in punter_results:
+            names = sorted(pl["name"] for pl in p["players"])
+            for i in range(len(names)):
+                for j in range(i + 1, len(names)):
+                    duos[(names[i], names[j])] += 1
+        if duos:
+            top_duo, duo_count = duos.most_common(1)[0]
+            fun_facts.append(f"{top_duo[0].split(' ')[-1]} + {top_duo[1].split(' ')[-1]} is the most popular combo — picked together {duo_count:,} times")
+
+    # Tournament facts
+    if tournament_lb:
+        leader = tournament_lb[0]
+        fun_facts.append(f"{leader['name']} leads the tournament at {leader['score']}")
+
+        # Leading amateur
+        amateurs = [p for p in tournament_lb if "(a)" in p.get("name", "")]
+        if amateurs:
+            fun_facts.append(f"Leading amateur: {amateurs[0]['name']} at {amateurs[0]['score']}")
+
+        # Best round (lowest stroke total in any round)
+        best_round = None
+        best_round_player = None
+        for p in tournament_lb:
+            for i, r in enumerate(p.get("rounds", [])):
+                if r and r > 50 and (best_round is None or r < best_round):
+                    best_round = r
+                    best_round_player = f"{p['name']} (R{i+1})"
+        if best_round:
+            fun_facts.append(f"Low round of the tournament: {best_round} by {best_round_player}")
+
     return {
         "punters": punter_results,
         "leaderboard": lb,
@@ -545,6 +632,7 @@ def calculate_standings():
         "odds": odds,
         "weather": fetch_weather(),
         "mover_label": mover_label,
+        "fun_facts": fun_facts,
         "prize_pool": prize_pool,
         "total_entries": total_entries,
         "payouts": payouts,
@@ -828,6 +916,22 @@ tr:hover{background:rgba(255,255,255,.03);}
   <div class="stat"><div class="val">${{ "{:,.0f}".format(data.payouts.get(3, 0)) }}</div><div class="lbl">3rd Place</div></div>
   <div class="stat"><div class="val">{{ data.config.payout_places }}</div><div class="lbl">Paid Places</div></div>
 </div>
+
+<!-- Fun Facts Ticker -->
+{% if data.fun_facts %}
+<div style="overflow:hidden;background:rgba(0,0,0,.2);border-bottom:1px solid rgba(255,215,0,.1);padding:8px 0;">
+  <div class="ticker-wrap">
+    <div class="ticker">
+      {% for fact in data.fun_facts %}
+      <span class="ticker-item">{{ fact }}</span>
+      {% endfor %}
+      {% for fact in data.fun_facts %}
+      <span class="ticker-item">{{ fact }}</span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="container">
 
