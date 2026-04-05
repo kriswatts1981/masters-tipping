@@ -533,7 +533,7 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 
 /* Layout */
 .container{max-width:1400px;margin:0 auto;padding:16px 20px;}
-.grid-2{display:grid;grid-template-columns:68fr 32fr;gap:12px;align-items:start;}
+.grid-2{display:grid;grid-template-columns:68fr 32fr;gap:12px;align-items:start;overflow:hidden;}
 @media(max-width:1024px){.grid-2{grid-template-columns:1fr;}}
 @media(max-width:768px){
   .hero-content{padding:20px 12px 16px;}
@@ -814,22 +814,22 @@ tr:hover{background:rgba(255,255,255,.03);}
       <tr>
         <th style="width:28px">Pos</th>
         <th>Player</th>
-        <th class="r" style="width:42px">Score</th>
-        <th class="c" style="width:32px">Thru</th>
-        <th class="r hide-mobile" style="width:38px">Today</th>
-        <th class="r hide-mobile" style="width:90px">Rounds</th>
+        <th class="r" style="width:40px">Score</th>
+        <th class="c" style="width:30px">Thru</th>
+        <th class="r hide-narrow" style="width:35px">Today</th>
+        <th class="r hide-narrow" style="width:80px">Rounds</th>
       </tr>
     </thead>
     <tbody>
     {% for pl in data.tournament_lb %}
     <tr class="{% if pl.cut %}tlb-cut-row{% endif %}">
       <td><span class="tlb-pos">{{ pl.position or '-' }}</span></td>
-      <td style="white-space:nowrap;">
-        {% if pl.flag_url %}<img src="{{ pl.flag_url }}" alt="{{ pl.country }}" title="{{ pl.country }}" style="width:16px;height:11px;border-radius:1px;object-fit:cover;vertical-align:middle;margin-right:4px;">{% endif %}<span class="tlb-name">{{ pl.name }}</span>{% set pc = data.picked_by_norm.get(pl.name|lower, data.picked_by.get(pl.name, [])) %}{% if pc|length > 0 %} <span class="tlb-picked">{{ pc|length }} picks</span>{% endif %}
+      <td>
+        {% if pl.flag_url %}<img src="{{ pl.flag_url }}" alt="{{ pl.country }}" title="{{ pl.country }}" style="width:14px;height:10px;border-radius:1px;object-fit:cover;vertical-align:middle;margin-right:3px;">{% endif %}<span class="tlb-name">{{ pl.name }}</span>{% set pc = data.picked_by_norm.get(pl.name|lower, data.picked_by.get(pl.name, [])) %}{% if pc|length > 0 %} <span class="tlb-picked">{{ pc|length }}</span>{% endif %}
       </td>
       <td class="r"><span class="sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.cut %} CUT{% endif %}</span></td>
       <td class="c tlb-thru">{% if pl.thru and pl.thru > 0 and pl.thru < 18 %}{{ pl.thru }}{% elif pl.thru == 18 or pl.thru == 0 %}F{% else %}-{% endif %}</td>
-      <td class="r hide-mobile">{% if pl.today and pl.today not in ('-', '') %}<span class="sc {% if pl.today.lstrip().startswith('-') %}under{% elif pl.today == 'E' %}even{% else %}over{% endif %}" style="font-size:11px;">{{ pl.today }}</span>{% else %}<span style="color:rgba(255,255,255,.15);">-</span>{% endif %}</td>
+      <td class="r hide-narrow">{% if pl.today and pl.today not in ('-', '') %}<span class="sc {% if pl.today.lstrip().startswith('-') %}under{% elif pl.today == 'E' %}even{% else %}over{% endif %}" style="font-size:11px;">{{ pl.today }}</span>{% else %}<span style="color:rgba(255,255,255,.15);">-</span>{% endif %}</td>
       <td class="r tlb-rounds hide-mobile" style="white-space:nowrap;font-size:10px;">{{ pl.rounds|join('/') if pl.rounds else '-' }}</td>
     </tr>
     {% endfor %}
