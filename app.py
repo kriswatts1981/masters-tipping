@@ -232,14 +232,21 @@ def fetch_leaderboard():
             "thru": thru, "today": today_score, "country": country, "flag_url": flag_url,
         })
 
-    # Determine cut line (relative to par) from the worst score among players who made the cut
+    # Determine cut line from R1+R2 scores (relative to par)
+    # The cut is made after R2 — cut line = worst R2 total among players who made the cut
     cut_line = None
     if current_round >= 3 or status_type in ("STATUS_FINAL", "STATUS_PLAY_COMPLETE"):
-        made_cut_scores = [p["total_score"] for p in player_data_list if not p["is_cut"]]
-        missed_cut_scores = [p["total_score"] for p in player_data_list if p["is_cut"]]
-        if made_cut_scores and missed_cut_scores:
-            # Cut line = the worst score that still made the cut
-            cut_line = max(made_cut_scores)
+        made_cut_r2 = []
+        for p in player_data_list:
+            if p["is_cut"]:
+                continue
+            if len(p["rounds_strokes"]) >= 2:
+                r2_total = sum(p["rounds_strokes"][:2]) - (par * 2)
+            else:
+                r2_total = p["total_score"]
+            made_cut_r2.append(r2_total)
+        if made_cut_r2:
+            cut_line = max(made_cut_r2)
 
     # Second pass: apply cut rule and build players dict
     players = {}
@@ -247,14 +254,17 @@ def fetch_leaderboard():
         total_score = p["total_score"]
         is_cut = p["is_cut"]
 
-        # Apply cut rule (all in relative-to-par):
-        # - Missed cut: use their total score (ESPN already shows R2 total for cut players)
-        # - Made cut but blew out: cap at cut line
+        # Apply cut rule:
+        # - Missed cut: use their R1+R2 score relative to par
+        # - Made cut but total score worse than cut line: cap at cut line
         effective_score = total_score
-        if not is_cut and cut_line is not None:
-            # Made the cut — if worse than cut line, cap at cut line
-            if total_score > cut_line:
-                effective_score = cut_line
+        if is_cut:
+            # Missed cut — use R1+R2 relative to par
+            if len(p["rounds_strokes"]) >= 2:
+                effective_score = sum(p["rounds_strokes"][:2]) - (par * 2)
+        elif cut_line is not None and total_score > cut_line:
+            # Made the cut but blew out — cap at cut line
+            effective_score = cut_line
 
         name = p["name"]
         players[name] = {
