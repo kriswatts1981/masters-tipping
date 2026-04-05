@@ -857,8 +857,9 @@ tr:hover{background:rgba(255,255,255,.03);}
 {% if data.punters %}
 <div class="card">
   <div class="card-title"><span>Tipping Leaderboard</span> <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">{% if data.leaderboard.last_updated %}<span id="lastUpdated" data-ts="{{ data.leaderboard.last_updated }}Z" style="font-size:10px;color:rgba(255,255,255,.3);font-family:'Inter',sans-serif;font-weight:400;"></span>{% endif %}<span class="badge">{{ data.total_entries }}</span></div></div>
-  <div class="search">
+  <div class="search" style="position:relative;">
     <input type="text" id="searchInput" placeholder="Search punter or player name..." onkeyup="filterTable()">
+    <span id="searchClear" onclick="document.getElementById('searchInput').value='';filterTable();this.style.display='none';" style="display:none;position:absolute;right:20px;top:50%;transform:translateY(-50%);cursor:pointer;color:rgba(255,255,255,.4);font-size:16px;line-height:1;padding:4px;">&times;</span>
   </div>
   <div class="scroll-table" style="max-height:800px;overflow-x:auto;">
   <table id="leaderboardTable" style="min-width:600px;">
@@ -921,7 +922,16 @@ tr:hover{background:rgba(255,255,255,.03);}
       </tr>
     </thead>
     <tbody>
+    {% set cut_shown = [false] %}
     {% for pl in data.tournament_lb %}
+    {% if pl.cut and not cut_shown[0] and data.leaderboard.cut_line is not none %}
+    <tr class="tlb-cut-divider">
+      <td colspan="6" style="padding:6px 10px;background:rgba(0,0,0,.2);border-top:2px solid rgba(255,100,100,.3);border-bottom:1px solid rgba(255,255,255,.06);font-size:10px;color:rgba(255,255,255,.45);font-style:italic;letter-spacing:.3px;">
+        Projected cut at {{ "+" if data.leaderboard.cut_line > 0 }}{{ data.leaderboard.cut_line if data.leaderboard.cut_line != 0 else "E" }} &mdash; players below missed the cut
+      </td>
+    </tr>
+    {% if cut_shown.append(true) %}{% endif %}{% if cut_shown.pop(0) is not none %}{% endif %}
+    {% endif %}
     <tr class="{% if pl.cut %}tlb-cut-row{% endif %}">
       <td><span class="tlb-pos">{{ pl.position or '-' }}</span></td>
       <td>
@@ -1066,6 +1076,7 @@ function reorderFavs(){
 
 function filterTable(){
   const q=document.getElementById('searchInput').value.toLowerCase();
+  document.getElementById('searchClear').style.display=q?'block':'none';
   document.querySelectorAll('#leaderboardTable tbody tr').forEach(tr=>{
     if(tr.classList.contains('fav-separator')){tr.style.display=q?'none':'';return;}
     tr.style.display=(tr.dataset.search||'').includes(q)?'':'none';
