@@ -738,7 +738,7 @@ tr:hover{background:rgba(255,255,255,.03);}
 <div class="card" style="margin-bottom:20px;">
   <div class="card-title">Most Selected Players <span class="badge">who's backing who</span></div>
   <div style="display:flex;gap:8px;padding:14px 16px;overflow-x:auto;">
-    {% for name, count, pct in data.popular_players[:8] %}
+    {% for name, count, pct in data.popular_players[:10] %}
     {% set pl = data.leaderboard.players.get(name, {}) %}
     <div style="flex:0 0 auto;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:12px 16px;min-width:130px;text-align:center;">
       <div style="font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;">{{ name.split(' ')[-1] }}</div>
