@@ -603,17 +603,18 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
   .punter{font-size:11px;}
   .pos-num{font-size:10px;min-width:18px;}
   .sc{font-size:11px!important;}
-  .scroll-table{max-height:none;}
+  .scroll-table{max-height:70vh;overflow-y:auto;}
   /* Tipping table: hide pool columns on mobile, show compact view */
   .pick-col{display:none!important;}
   #leaderboardTable{min-width:0!important;}
   .money{font-size:11px;}
-  /* Tournament leaderboard */
+  /* Tournament leaderboard — hide Thru on mobile too, just Pos/Player/Score */
   .tlb-name{font-size:11px;}
   .tlb-picked{font-size:7px;padding:1px 3px;}
   .tlb-rounds{font-size:9px;}
   .tlb-thru{font-size:9px;}
   .tlb-pos{font-size:10px;min-width:18px;}
+  .hide-thru-mobile{display:none!important;}
   .footer{font-size:9px;padding:12px 8px;}
   /* Hide less important columns on mobile */
   .hide-mobile{display:none!important;}
@@ -868,7 +869,7 @@ tr:hover{background:rgba(255,255,255,.03);}
         <th style="width:26px">Pos</th>
         <th>Player</th>
         <th class="r" style="width:38px">Score</th>
-        <th class="c" style="width:24px">Thru</th>
+        <th class="c hide-thru-mobile" style="width:24px">Thru</th>
         <th class="r hide-narrow" style="width:28px">Tdy</th>
         <th class="r hide-narrow">Rounds</th>
       </tr>
@@ -881,7 +882,7 @@ tr:hover{background:rgba(255,255,255,.03);}
         {% if pl.flag_url %}<img src="{{ pl.flag_url }}" alt="{{ pl.country }}" title="{{ pl.country }}" style="width:14px;height:10px;border-radius:1px;object-fit:cover;vertical-align:middle;margin-right:3px;">{% endif %}<span class="tlb-name">{{ pl.name }}</span>{% set pc = data.picked_by_norm.get(pl.name|lower, data.picked_by.get(pl.name, [])) %}{% if pc|length > 0 %} <span class="tlb-picked">{{ pc|length }}</span>{% endif %}
       </td>
       <td class="r"><span class="sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.cut %} CUT{% endif %}</span></td>
-      <td class="c tlb-thru">{% if pl.thru and pl.thru > 0 and pl.thru < 18 %}{{ pl.thru }}{% elif pl.thru == 18 or pl.thru == 0 %}F{% else %}-{% endif %}</td>
+      <td class="c tlb-thru hide-thru-mobile">{% if pl.thru and pl.thru > 0 and pl.thru < 18 %}{{ pl.thru }}{% elif pl.thru == 18 or pl.thru == 0 %}F{% else %}-{% endif %}</td>
       <td class="r hide-narrow">{% if pl.today and pl.today not in ('-', '') %}<span class="sc {% if pl.today.lstrip().startswith('-') %}under{% elif pl.today == 'E' %}even{% else %}over{% endif %}" style="font-size:11px;">{{ pl.today }}</span>{% else %}<span style="color:rgba(255,255,255,.15);">-</span>{% endif %}</td>
       <td class="r tlb-rounds hide-narrow" style="white-space:nowrap;font-size:10px;">{{ pl.rounds|join('/') if pl.rounds else '-' }}</td>
     </tr>
