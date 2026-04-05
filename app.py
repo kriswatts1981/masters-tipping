@@ -532,8 +532,32 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 
 /* Layout */
 .container{max-width:1400px;margin:0 auto;padding:20px;}
-.grid-2{display:grid;grid-template-columns:1fr 380px;gap:20px;}
+.grid-2{display:grid;grid-template-columns:1fr 340px;gap:20px;}
+@media(max-width:1200px){.grid-2{grid-template-columns:1fr 300px;}}
 @media(max-width:1024px){.grid-2{grid-template-columns:1fr;}}
+@media(max-width:768px){
+  .hero-content{padding:24px 16px 20px;}
+  .hero h1{font-size:26px;}
+  .hero-bg::before{display:none;}
+  .hero-bg::after{display:none;}
+  .scoreboard-strip{padding:8px 10px;gap:2px;}
+  .sb-cell{min-width:46px;padding:4px 2px;}
+  .sb-cell .sb-name{font-size:8px;max-width:46px;}
+  .sb-cell .sb-score{font-size:13px;}
+  .stats{gap:16px;padding:12px 10px;}
+  .stat .val{font-size:18px;}
+  .stat .lbl{font-size:8px;}
+  .container{padding:10px;}
+  .card-title{padding:10px 14px;font-size:13px;}
+  .search{padding:8px 10px;}
+  th,td{padding:5px 6px;font-size:11px;}
+  .punter{font-size:11px;}
+  .pick-cell{font-size:10px;}
+  .pick-cell .pick-name{font-size:10px;}
+  .pick-cell .pick-score{font-size:9px;}
+  .pos-num{font-size:11px;}
+  .scroll-table{max-height:600px;}
+}
 
 /* Cards */
 .card{background:rgba(0,0,0,.2);border-radius:8px;overflow:hidden;margin-bottom:20px;border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(10px);}
@@ -673,11 +697,6 @@ tr:hover{background:rgba(255,255,255,.03);}
     <div style="color:rgba(255,255,255,.4);">
       <span style="color:rgba(255,255,255,.3);">Gusts:</span> {{ data.weather.gusts }} mph
     </div>
-    {% if data.leaderboard.last_updated %}
-    <div style="color:rgba(255,255,255,.25);font-size:10px;border-left:1px solid rgba(255,255,255,.1);padding-left:16px;">
-      Updated {{ data.leaderboard.last_updated }}
-    </div>
-    {% endif %}
   </div>
 </div>
 {% endif %}
@@ -718,12 +737,12 @@ tr:hover{background:rgba(255,255,255,.03);}
 <div>
 {% if data.punters %}
 <div class="card">
-  <div class="card-title">Tipping Leaderboard <span class="badge">{{ data.total_entries }} entries</span></div>
+  <div class="card-title">Tipping Leaderboard <div style="display:flex;align-items:center;gap:10px;">{% if data.leaderboard.last_updated %}<span style="font-size:10px;color:rgba(255,255,255,.3);font-family:'Inter',sans-serif;font-weight:400;">Updated {{ data.leaderboard.last_updated }}</span>{% endif %}<span class="badge">{{ data.total_entries }} entries</span></div></div>
   <div class="search">
     <input type="text" id="searchInput" placeholder="Search punter or player name..." onkeyup="filterTable()">
   </div>
-  <div class="scroll-table" style="max-height:800px;">
-  <table id="leaderboardTable">
+  <div class="scroll-table" style="max-height:800px;overflow-x:auto;">
+  <table id="leaderboardTable" style="min-width:700px;">
     <thead>
       <tr>
         <th style="width:32px">#</th>
