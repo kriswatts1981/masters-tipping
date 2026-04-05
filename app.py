@@ -635,7 +635,7 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
   .search input{padding:6px 10px;font-size:12px;}
   th{padding:5px 4px;font-size:7px;letter-spacing:.8px;}
   td{padding:5px 4px;font-size:11px;}
-  .punter{font-size:11px;white-space:normal!important;max-width:120px;}
+  .punter{font-size:11px;white-space:normal!important;width:auto!important;max-width:140px;}
   .pos-num{font-size:10px;min-width:16px;}
   .sc{font-size:11px!important;}
   .scroll-table{max-height:70vh;overflow-y:auto;overflow-x:hidden;}
