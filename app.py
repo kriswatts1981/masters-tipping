@@ -605,7 +605,7 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 
 /* Layout */
 .container{max-width:1400px;margin:0 auto;padding:16px 20px;}
-.grid-2{display:grid;grid-template-columns:68fr 32fr;gap:12px;overflow:hidden;}
+.grid-2{display:grid;grid-template-columns:62fr 38fr;gap:12px;overflow:hidden;}
 .grid-2>div{display:flex;flex-direction:column;}
 .grid-2>div>.card:last-child{flex:1;display:flex;flex-direction:column;}
 .grid-2>div>.card:last-child>.scroll-table{flex:1;max-height:none;}
