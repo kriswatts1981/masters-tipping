@@ -60,8 +60,11 @@ def load_config():
 
 def load_picks():
     if os.path.exists(PICKS_FILE):
-        with open(PICKS_FILE) as f:
-            return json.load(f)
+        try:
+            with open(PICKS_FILE) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, Exception) as e:
+            print(f"ERROR loading picks.json: {e}")
     return []
 
 
@@ -165,6 +168,8 @@ def fetch_leaderboard():
         data = r.json()
     except Exception as e:
         print(f"ESPN API error: {e}")
+        # Back off — don't hammer a failing API
+        _cache["ts"] = time.time() - CACHE_TTL + 30  # retry in 30s not immediately
         return _cache["data"] or {}
 
     events = data.get("events", [])
@@ -364,11 +369,14 @@ def calculate_standings():
                     "rounds": matched["rounds"],
                 })
             else:
+                # Unmatched player gets worst score in field as penalty (not free E)
+                worst = max((p["score"] for p in players.values()), default=20)
+                penalty = max(worst, 10)  # at least +10
                 player_details.append({
                     "pick": pick,
-                    "name": pick,
-                    "score": 0,
-                    "actual_score": 0,
+                    "name": pick + " (?)",
+                    "score": penalty,
+                    "actual_score": penalty,
                     "display": "?",
                     "position": "N/A",
                     "cut": False,
