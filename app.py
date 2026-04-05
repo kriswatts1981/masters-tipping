@@ -667,7 +667,7 @@ tr:hover{background:rgba(255,255,255,.03);}
 
 <!-- Weather & Local Time Bar -->
 {% if data.weather %}
-<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 24px;background:rgba(0,0,0,.15);border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap;gap:8px;">
+<div class="weather-bar" style="display:flex;justify-content:space-between;align-items:center;padding:8px 24px;background:rgba(0,0,0,.15);border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap;gap:8px;">
   <div style="display:flex;align-items:center;gap:16px;">
     <div style="font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1px;">Augusta National</div>
     {% if data.weather.local_time %}
@@ -808,31 +808,29 @@ tr:hover{background:rgba(255,255,255,.03);}
 <div>
 <div class="card">
   <div class="card-title">Tournament Leaderboard <span class="badge">{{ data.tournament_lb|length }} players</span></div>
-  <div class="scroll-table" style="max-height:800px;">
-  <table>
+  <div class="scroll-table" style="max-height:800px;overflow-x:auto;">
+  <table style="min-width:480px;">
     <thead>
       <tr>
-        <th style="width:28px">Pos</th>
+        <th style="width:32px">Pos</th>
         <th>Player</th>
         <th class="c">Score</th>
         <th class="c">Thru</th>
-        <th class="r hide-mobile">Today</th>
-        <th class="r hide-mobile">Rounds</th>
+        <th class="r">Today</th>
+        <th class="r">Rounds</th>
       </tr>
     </thead>
     <tbody>
     {% for pl in data.tournament_lb %}
     <tr class="{% if pl.cut %}tlb-cut-row{% endif %}">
       <td><span class="tlb-pos">{{ pl.position or '-' }}</span></td>
-      <td>
-        <div style="white-space:nowrap;display:flex;align-items:center;gap:5px;">
-          {% if pl.flag_url %}<img src="{{ pl.flag_url }}" alt="{{ pl.country }}" title="{{ pl.country }}" style="width:16px;height:11px;border-radius:1px;object-fit:cover;flex-shrink:0;">{% endif %}<span class="tlb-name">{{ pl.name }}</span>{% set pc = data.picked_by_norm.get(pl.name|lower, data.picked_by.get(pl.name, [])) %}{% if pc|length > 0 %}<span class="tlb-picked">{{ pc|length }} picks</span>{% endif %}
-        </div>
+      <td style="white-space:nowrap;">
+        {% if pl.flag_url %}<img src="{{ pl.flag_url }}" alt="{{ pl.country }}" title="{{ pl.country }}" style="width:16px;height:11px;border-radius:1px;object-fit:cover;vertical-align:middle;margin-right:4px;">{% endif %}<span class="tlb-name">{{ pl.name }}</span>{% set pc = data.picked_by_norm.get(pl.name|lower, data.picked_by.get(pl.name, [])) %}{% if pc|length > 0 %} <span class="tlb-picked">{{ pc|length }} picks</span>{% endif %}
       </td>
       <td class="c"><span class="sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.cut %} CUT{% endif %}</span></td>
       <td class="c tlb-thru">{% if pl.thru and pl.thru > 0 and pl.thru < 18 %}{{ pl.thru }}{% elif pl.thru == 18 or pl.thru == 0 %}F{% else %}-{% endif %}</td>
       <td class="r">{% if pl.today and pl.today not in ('-', '') %}<span class="sc {% if pl.today.lstrip().startswith('-') %}under{% elif pl.today == 'E' %}even{% else %}over{% endif %}" style="font-size:11px;">{{ pl.today }}</span>{% else %}<span style="color:rgba(255,255,255,.15);">-</span>{% endif %}</td>
-      <td class="r tlb-rounds">{{ pl.rounds|join(' / ') if pl.rounds else '-' }}</td>
+      <td class="r tlb-rounds" style="white-space:nowrap;">{{ pl.rounds|join(' / ') if pl.rounds else '-' }}</td>
     </tr>
     {% endfor %}
     </tbody>
