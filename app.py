@@ -180,24 +180,9 @@ def fetch_leaderboard():
     status_type = status.get("type", {}).get("name", "STATUS_SCHEDULED")
     current_round = status.get("period", 0)
 
-    # Determine cut line (after round 2)
-    cut_line = None
-    if current_round >= 3 or status_type in ("STATUS_FINAL", "STATUS_PLAY_COMPLETE"):
-        # Find the cut line from players who missed the cut
-        scores_of_cut_players = []
-        for c in competitors:
-            player_status = c.get("status", {}).get("type", {}).get("name", "")
-            if player_status == "cut":
-                # Their score after R2 is the cut line
-                linescores = c.get("linescores", [])
-                if len(linescores) >= 2:
-                    r1 = linescores[0].get("value", 0)
-                    r2 = linescores[1].get("value", 0)
-                    scores_of_cut_players.append(r1 + r2)
-        if scores_of_cut_players:
-            cut_line = min(scores_of_cut_players)  # best score among cut players = the cut line
-
-    players = {}
+    # First pass: parse all player data
+    par = 72  # Augusta National par
+    player_data_list = []
     for c in competitors:
         athlete = c.get("athlete", {})
         name = athlete.get("displayName", "Unknown")
@@ -219,43 +204,67 @@ def fetch_leaderboard():
             except (ValueError, TypeError):
                 total_score = 0
 
-        # Round scores (cap at 4 rounds — ESPN may include extra linescores)
-        linescores = c.get("linescores", [])[:4]
-        rounds = []
-        for ls in linescores:
+        # Round scores — stroke totals (e.g., 68, 72)
+        linescores = c.get("linescores", [])
+        rounds_strokes = []
+        for ls in linescores[:4]:  # cap at 4 rounds
             val = ls.get("value", 0)
-            if val:
-                rounds.append(int(val))
+            if val and val > 50:  # sanity check — real round scores are 60-85
+                rounds_strokes.append(int(val))
 
-        # Calculate score after R2 (for cut rule)
-        r2_total = sum(rounds[:2]) if len(rounds) >= 2 else total_score
-
-        # Apply cut rule:
-        # If player made the cut but blew out in R3/R4, cap at cut line
-        # If player missed cut, use their R2 total
-        effective_score = total_score
+        # Detect cut: player has fewer completed rounds than expected
+        # ESPN gives cut players only 2 rounds of data
+        rounds_played = len(rounds_strokes)
+        is_cut = (current_round >= 3 or status_type in ("STATUS_FINAL", "STATUS_PLAY_COMPLETE")) and rounds_played <= 2 and current_round > 2
+        # Also check ESPN's status field as backup
         if player_status == "cut":
-            # Missed the cut — use their score after R2
-            effective_score = r2_total
-        elif cut_line is not None and current_round >= 3 and player_status != "cut":
-            # Made the cut — if their total is worse than cut line, cap at cut line
+            is_cut = True
+
+        player_data_list.append({
+            "name": name, "score_str": score_str, "total_score": total_score,
+            "rounds_strokes": rounds_strokes, "rounds_played": rounds_played,
+            "is_cut": is_cut, "position": position, "player_status": player_status,
+            "thru": thru, "today": today_score, "country": country, "flag_url": flag_url,
+        })
+
+    # Determine cut line (relative to par) from the worst score among players who made the cut
+    cut_line = None
+    if current_round >= 3 or status_type in ("STATUS_FINAL", "STATUS_PLAY_COMPLETE"):
+        made_cut_scores = [p["total_score"] for p in player_data_list if not p["is_cut"]]
+        missed_cut_scores = [p["total_score"] for p in player_data_list if p["is_cut"]]
+        if made_cut_scores and missed_cut_scores:
+            # Cut line = the worst score that still made the cut
+            cut_line = max(made_cut_scores)
+
+    # Second pass: apply cut rule and build players dict
+    players = {}
+    for p in player_data_list:
+        total_score = p["total_score"]
+        is_cut = p["is_cut"]
+
+        # Apply cut rule (all in relative-to-par):
+        # - Missed cut: use their total score (ESPN already shows R2 total for cut players)
+        # - Made cut but blew out: cap at cut line
+        effective_score = total_score
+        if not is_cut and cut_line is not None:
+            # Made the cut — if worse than cut line, cap at cut line
             if total_score > cut_line:
                 effective_score = cut_line
 
+        name = p["name"]
         players[name] = {
             "name": name,
             "score": total_score,
             "effective_score": effective_score,
-            "score_display": score_str,
-            "position": position,
-            "status": player_status,
-            "thru": thru,
-            "today": today_score,
-            "rounds": rounds,
-            "r2_total": r2_total,
-            "cut": player_status == "cut",
-            "country": country,
-            "flag_url": flag_url,
+            "score_display": p["score_str"],
+            "position": p["position"],
+            "status": p["player_status"],
+            "thru": p["thru"],
+            "today": p["today"],
+            "rounds": p["rounds_strokes"],
+            "cut": is_cut,
+            "country": p["country"],
+            "flag_url": p["flag_url"],
         }
 
     # Calculate positions from scores if ESPN doesn't provide them
@@ -400,16 +409,24 @@ def calculate_standings():
         11: 1.0, 12: 1.0, 13: 1.0, 14: 1.0, 15: 1.0,
         16: 0.5, 17: 0.5, 18: 0.5, 19: 0.5, 20: 0.5,
     }
-    payouts = {}
+    payouts_per_pos = {}
     for pos_num, pct in payout_pcts.items():
-        payouts[pos_num] = round(prize_pool * pct / 100, 0)
+        payouts_per_pos[pos_num] = round(prize_pool * pct / 100, 0)
 
-    # Mark who's in the money
+    # Split payouts for ties: if N punters tie at position P,
+    # they split the prize money for positions P through P+N-1
+    from collections import Counter
+    pos_counts = Counter(p["position"] for p in punter_results)
     for p in punter_results:
-        if p["position"] <= cfg["payout_places"]:
-            p["payout"] = payouts.get(p["position"], 0)
+        pos = p["position"]
+        if pos <= cfg["payout_places"]:
+            n_tied = pos_counts[pos]
+            pool_for_tied = sum(payouts_per_pos.get(pos + i, 0) for i in range(n_tied) if pos + i <= cfg["payout_places"])
+            p["payout"] = round(pool_for_tied / n_tied, 0)
         else:
             p["payout"] = 0
+
+    payouts = payouts_per_pos
 
     # Build sorted tournament leaderboard for display
     tournament_lb = sorted(players.values(), key=lambda x: x["score"])
@@ -690,7 +707,8 @@ tr:hover{background:rgba(255,255,255,.03);}
 .fav-star:hover{color:rgba(255,215,0,.5);}
 .fav-star.active{color:#ffd700;}
 .fav-row{background:rgba(255,215,0,.04)!important;}
-.fav-separator td{padding:4px 10px!important;background:rgba(0,0,0,.15)!important;border:none!important;font-size:9px;color:rgba(255,215,0,.4);letter-spacing:1px;text-transform:uppercase;border-top:1px solid rgba(255,215,0,.15)!important;border-bottom:1px solid rgba(255,215,0,.15)!important;}
+.fav-header td{padding:4px 10px!important;background:rgba(255,215,0,.06)!important;border:none!important;font-size:9px;color:rgba(255,215,0,.5);letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,215,0,.1)!important;}
+.fav-separator td{padding:4px 10px!important;background:rgba(0,0,0,.15)!important;border:none!important;font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px;text-transform:uppercase;border-top:1px solid rgba(255,215,0,.1)!important;border-bottom:1px solid rgba(255,215,0,.1)!important;}
 
 .footer{text-align:center;padding:16px;font-size:10px;color:rgba(255,255,255,.2);letter-spacing:.5px;}
 .empty{text-align:center;padding:40px;color:rgba(255,255,255,.3);}
@@ -983,34 +1001,36 @@ function reorderFavs(){
   var tbody=document.querySelector('#leaderboardTable tbody');
   if(!tbody)return;
   var favs=getFavs();
-  // Remove old separator
-  var old=tbody.querySelector('.fav-separator');
-  if(old)old.remove();
-  // Reset fav-row styling
+  // Remove old headers/separators
+  tbody.querySelectorAll('.fav-separator,.fav-header').forEach(function(el){el.remove();});
   tbody.querySelectorAll('tr').forEach(function(tr){tr.classList.remove('fav-row');});
-  // Get all data rows sorted by original order
-  var rows=Array.from(tbody.querySelectorAll('tr[data-punter]'));
-  rows.sort(function(a,b){return parseInt(a.dataset.order)-parseInt(b.dataset.order);});
-  var favRows=[];var otherRows=[];
-  rows.forEach(function(tr){
-    if(favs.indexOf(tr.dataset.punter)>=0){favRows.push(tr);tr.classList.add('fav-row');}
-    else{otherRows.push(tr);}
-  });
-  // Rebuild tbody: favs first, separator, then rest in original order
-  if(favRows.length){
-    favRows.forEach(function(r){tbody.appendChild(r);});
-    if(otherRows.length){
-      var sep=document.createElement('tr');
-      sep.className='fav-separator';
-      var cols=rows[0]?rows[0].children.length:5;
-      sep.innerHTML='<td colspan="'+cols+'">All Punters</td>';
-      tbody.appendChild(sep);
-    }
-    otherRows.forEach(function(r){tbody.appendChild(r);});
-  } else {
-    // No favs — restore original order
-    rows.forEach(function(r){tbody.appendChild(r);});
+  if(!favs.length){
+    // No favs — restore original order without rebuilding entire DOM
+    var all=Array.from(tbody.querySelectorAll('tr[data-punter]'));
+    all.sort(function(a,b){return parseInt(a.dataset.order)-parseInt(b.dataset.order);});
+    all.forEach(function(r){tbody.appendChild(r);});
+    return;
   }
+  var cols=tbody.querySelector('tr')?tbody.querySelector('tr').children.length:5;
+  var favSet=new Set(favs);
+  // Only move fav rows — leave the rest in place for speed
+  var rows=Array.from(tbody.querySelectorAll('tr[data-punter]'));
+  var favRows=rows.filter(function(tr){return favSet.has(tr.dataset.punter);});
+  favRows.sort(function(a,b){return parseInt(a.dataset.order)-parseInt(b.dataset.order);});
+  // Build fragment: header + fav rows + separator
+  var frag=document.createDocumentFragment();
+  var hdr=document.createElement('tr');
+  hdr.className='fav-header';
+  hdr.innerHTML='<td colspan="'+cols+'">&#9733; Favourites</td>';
+  frag.appendChild(hdr);
+  favRows.forEach(function(r){r.classList.add('fav-row');frag.appendChild(r);});
+  var sep=document.createElement('tr');
+  sep.className='fav-separator';
+  sep.innerHTML='<td colspan="'+cols+'">All Punters</td>';
+  frag.appendChild(sep);
+  // Insert before the first remaining data row
+  var first=tbody.querySelector('tr[data-punter]');
+  if(first){tbody.insertBefore(frag,first);}else{tbody.appendChild(frag);}
 }
 
 // Init: mark saved favs and reorder on page load
