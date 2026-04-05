@@ -533,7 +533,10 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 
 /* Layout */
 .container{max-width:1400px;margin:0 auto;padding:16px 20px;}
-.grid-2{display:grid;grid-template-columns:68fr 32fr;gap:12px;align-items:start;overflow:hidden;}
+.grid-2{display:grid;grid-template-columns:68fr 32fr;gap:12px;overflow:hidden;}
+.grid-2>div{display:flex;flex-direction:column;}
+.grid-2>div>.card:last-child{flex:1;display:flex;flex-direction:column;}
+.grid-2>div>.card:last-child>.scroll-table{flex:1;max-height:none;}
 @media(max-width:1400px){.hide-narrow{display:none!important;}}
 @media(max-width:1024px){.grid-2{grid-template-columns:1fr;}.hide-narrow{display:table-cell!important;}}
 @media(max-width:768px){
@@ -763,10 +766,10 @@ tr:hover{background:rgba(255,255,255,.03);}
   <table id="leaderboardTable" style="min-width:600px;">
     <thead>
       <tr>
-        <th style="width:24px">#</th>
-        <th style="width:30px" class="c"></th>
+        <th style="width:20px;padding-right:0">#</th>
+        <th style="width:28px;padding-left:0" class="c"></th>
         <th>Punter</th>
-        <th class="c" style="width:42px">Score</th>
+        <th class="c" style="width:38px">Score</th>
         <th>Pool 1</th>
         <th>Pool 2</th>
         <th>Pool 3</th>
@@ -778,15 +781,12 @@ tr:hover{background:rgba(255,255,255,.03);}
     <tbody>
     {% for p in data.punters %}
     <tr class="{% if p.payout > 0 %}payout-row{% endif %}" data-search="{{ p.name|lower }} {% for pl in p.players %}{{ pl.name|lower }} {% endfor %}">
-      <td><span class="pos-num">{{ p.position }}</span></td>
-      <td class="c" style="font-size:11px;font-weight:700;">{% if p.mover > 0 %}<span style="color:#4ade80;">&#9650;{{ p.mover }}</span>{% elif p.mover < 0 %}<span style="color:#f87171;">&#9660;{{ p.mover|abs }}</span>{% else %}<span style="color:rgba(255,255,255,.25);">-</span>{% endif %}</td>
+      <td style="padding-right:0"><span class="pos-num">{{ p.position }}</span></td>
+      <td class="c" style="font-size:10px;font-weight:700;padding-left:0;">{% if p.mover > 0 %}<span style="color:#4ade80;">&#9650;{{ p.mover }}</span>{% elif p.mover < 0 %}<span style="color:#f87171;">&#9660;{{ p.mover|abs }}</span>{% else %}<span style="color:rgba(255,255,255,.25);">-</span>{% endif %}</td>
       <td class="punter">{{ p.name }}</td>
       <td class="c"><span class="sc {% if p.total < 0 %}under{% elif p.total == 0 %}even{% else %}over{% endif %}" style="font-size:14px;">{% if p.total > 0 %}+{% endif %}{{ p.total if p.total != 0 else 'E' }}</span></td>
       {% for pl in p.players %}
-      <td class="pick-cell">
-        <div class="pick-name {% if pl.cut %}cut-txt{% elif pl.capped %}cap-txt{% endif %}">{{ pl.name.split(' ')[-1] }}</div>
-        <div class="pick-score sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.capped %}*{% endif %}{% if pl.cut %} CUT{% endif %}</div>
-      </td>
+      <td class="pick-cell"><span class="pick-name {% if pl.cut %}cut-txt{% elif pl.capped %}cap-txt{% endif %}">{{ pl.name.split(' ')[-1] }}</span> <span class="pick-score sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.capped %}*{% endif %}{% if pl.cut %} CUT{% endif %}</span></td>
       {% endfor %}
       {% for _ in range(5 - p.players|length) %}<td class="pick-cell">-</td>{% endfor %}
       <td class="r money">{% if p.payout > 0 %}<strong>${{ "{:,.0f}".format(p.payout) }}</strong>{% endif %}</td>
