@@ -525,15 +525,14 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 .sb-cell.sb-leader .sb-name{color:#ffd700;}
 
 /* Stats bar */
-.stats{display:flex;justify-content:center;gap:40px;padding:18px 20px;background:rgba(0,0,0,.25);flex-wrap:wrap;border-bottom:2px solid rgba(255,215,0,.3);}
+.stats{display:flex;justify-content:center;gap:32px;padding:14px 20px;background:rgba(0,0,0,.25);flex-wrap:wrap;border-bottom:2px solid rgba(255,215,0,.3);}
 .stat{text-align:center;}
 .stat .val{font-size:24px;color:#ffd700;font-weight:700;font-family:'Playfair Display',serif;}
 .stat .lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.5);margin-top:2px;}
 
 /* Layout */
-.container{max-width:1400px;margin:0 auto;padding:20px;}
-.grid-2{display:grid;grid-template-columns:1fr 340px;gap:20px;}
-@media(max-width:1200px){.grid-2{grid-template-columns:1fr 300px;}}
+.container{max-width:1400px;margin:0 auto;padding:16px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:1024px){.grid-2{grid-template-columns:1fr;}}
 @media(max-width:768px){
   .hero-content{padding:20px 12px 16px;}
@@ -577,15 +576,15 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 
 /* Cards */
 .card{background:rgba(0,0,0,.2);border-radius:8px;overflow:hidden;margin-bottom:20px;border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(10px);}
-.card-title{padding:14px 18px;font-size:14px;font-weight:700;color:#ffd700;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;font-family:'Playfair Display',serif;letter-spacing:.5px;}
+.card-title{padding:10px 14px;font-size:14px;font-weight:700;color:#ffd700;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;font-family:'Playfair Display',serif;letter-spacing:.5px;}
 .card-title .badge{font-size:10px;background:rgba(255,215,0,.12);color:#ffd700;padding:3px 10px;border-radius:12px;font-family:'Inter',sans-serif;font-weight:600;}
 
 /* Tables */
 table{width:100%;border-collapse:collapse;}
-th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.4);padding:10px 10px;border-bottom:1px solid rgba(255,255,255,.08);font-weight:600;}
+th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.4);padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);font-weight:600;}
 th.r,td.r{text-align:right;}
 th.c,td.c{text-align:center;}
-td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;}
+td{padding:6px 6px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;}
 tr:hover{background:rgba(255,255,255,.03);}
 
 /* Scores */
@@ -614,7 +613,7 @@ tr:hover{background:rgba(255,255,255,.03);}
 .tlb-thru{font-size:10px;color:rgba(255,255,255,.5);}
 
 /* Search */
-.search{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);}
+.search{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06);}
 .search input{width:100%;padding:7px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font-size:12px;font-family:'Inter',sans-serif;}
 .search input::placeholder{color:rgba(255,255,255,.25);}
 .search input:focus{outline:none;border-color:rgba(255,215,0,.3);}
@@ -758,19 +757,19 @@ tr:hover{background:rgba(255,255,255,.03);}
     <input type="text" id="searchInput" placeholder="Search punter or player name..." onkeyup="filterTable()">
   </div>
   <div class="scroll-table" style="max-height:800px;overflow-x:auto;">
-  <table id="leaderboardTable" style="min-width:700px;">
+  <table id="leaderboardTable" style="min-width:600px;">
     <thead>
       <tr>
-        <th style="width:32px">#</th>
-        <th style="width:36px" class="c"></th>
+        <th style="width:24px">#</th>
+        <th style="width:30px" class="c"></th>
         <th>Punter</th>
-        <th class="c">Score</th>
+        <th class="c" style="width:42px">Score</th>
         <th>Pool 1</th>
         <th>Pool 2</th>
         <th>Pool 3</th>
         <th>Pool 4</th>
         <th>Pool 5</th>
-        <th class="r">Payout</th>
+        <th class="r" style="width:60px">Payout</th>
       </tr>
     </thead>
     <tbody>
@@ -808,16 +807,16 @@ tr:hover{background:rgba(255,255,255,.03);}
 <div>
 <div class="card">
   <div class="card-title">Tournament Leaderboard <span class="badge">{{ data.tournament_lb|length }} players</span></div>
-  <div class="scroll-table" style="max-height:800px;overflow-x:auto;">
-  <table style="min-width:650px;table-layout:fixed;">
+  <div class="scroll-table" style="max-height:800px;">
+  <table>
     <thead>
       <tr>
-        <th style="width:40px">Pos</th>
-        <th style="width:auto">Player</th>
-        <th style="width:55px" class="c">Score</th>
-        <th style="width:40px" class="c">Thru</th>
-        <th style="width:50px" class="r">Today</th>
-        <th style="width:120px" class="r">Rounds</th>
+        <th style="width:28px">Pos</th>
+        <th>Player</th>
+        <th class="r" style="width:42px">Score</th>
+        <th class="c" style="width:32px">Thru</th>
+        <th class="r hide-mobile" style="width:38px">Today</th>
+        <th class="r hide-mobile" style="width:90px">Rounds</th>
       </tr>
     </thead>
     <tbody>
@@ -827,10 +826,10 @@ tr:hover{background:rgba(255,255,255,.03);}
       <td style="white-space:nowrap;">
         {% if pl.flag_url %}<img src="{{ pl.flag_url }}" alt="{{ pl.country }}" title="{{ pl.country }}" style="width:16px;height:11px;border-radius:1px;object-fit:cover;vertical-align:middle;margin-right:4px;">{% endif %}<span class="tlb-name">{{ pl.name }}</span>{% set pc = data.picked_by_norm.get(pl.name|lower, data.picked_by.get(pl.name, [])) %}{% if pc|length > 0 %} <span class="tlb-picked">{{ pc|length }} picks</span>{% endif %}
       </td>
-      <td class="c"><span class="sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.cut %} CUT{% endif %}</span></td>
+      <td class="r"><span class="sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.cut %} CUT{% endif %}</span></td>
       <td class="c tlb-thru">{% if pl.thru and pl.thru > 0 and pl.thru < 18 %}{{ pl.thru }}{% elif pl.thru == 18 or pl.thru == 0 %}F{% else %}-{% endif %}</td>
-      <td class="r">{% if pl.today and pl.today not in ('-', '') %}<span class="sc {% if pl.today.lstrip().startswith('-') %}under{% elif pl.today == 'E' %}even{% else %}over{% endif %}" style="font-size:11px;">{{ pl.today }}</span>{% else %}<span style="color:rgba(255,255,255,.15);">-</span>{% endif %}</td>
-      <td class="r tlb-rounds" style="white-space:nowrap;">{{ pl.rounds|join(' / ') if pl.rounds else '-' }}</td>
+      <td class="r hide-mobile">{% if pl.today and pl.today not in ('-', '') %}<span class="sc {% if pl.today.lstrip().startswith('-') %}under{% elif pl.today == 'E' %}even{% else %}over{% endif %}" style="font-size:11px;">{{ pl.today }}</span>{% else %}<span style="color:rgba(255,255,255,.15);">-</span>{% endif %}</td>
+      <td class="r tlb-rounds hide-mobile" style="white-space:nowrap;font-size:10px;">{{ pl.rounds|join('/') if pl.rounds else '-' }}</td>
     </tr>
     {% endfor %}
     </tbody>
