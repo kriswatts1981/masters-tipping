@@ -260,7 +260,7 @@ def fetch_leaderboard():
         "current_round": current_round,
         "status": status_type,
         "tournament_name": event.get("name", cfg["tournament_name"]),
-        "last_updated": time.strftime("%H:%M:%S", time.localtime(now)),
+        "last_updated": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(now)),
     }
     _cache["data"] = result
     _cache["ts"] = now
@@ -536,27 +536,43 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 @media(max-width:1200px){.grid-2{grid-template-columns:1fr 300px;}}
 @media(max-width:1024px){.grid-2{grid-template-columns:1fr;}}
 @media(max-width:768px){
-  .hero-content{padding:24px 16px 20px;}
-  .hero h1{font-size:26px;}
+  .hero-content{padding:20px 12px 16px;}
+  .hero h1{font-size:24px;}
   .hero-bg::before{display:none;}
   .hero-bg::after{display:none;}
-  .scoreboard-strip{padding:8px 10px;gap:2px;}
-  .sb-cell{min-width:46px;padding:4px 2px;}
-  .sb-cell .sb-name{font-size:8px;max-width:46px;}
-  .sb-cell .sb-score{font-size:13px;}
-  .stats{gap:16px;padding:12px 10px;}
-  .stat .val{font-size:18px;}
-  .stat .lbl{font-size:8px;}
-  .container{padding:10px;}
-  .card-title{padding:10px 14px;font-size:13px;}
-  .search{padding:8px 10px;}
-  th,td{padding:5px 6px;font-size:11px;}
-  .punter{font-size:11px;}
-  .pick-cell{font-size:10px;}
-  .pick-cell .pick-name{font-size:10px;}
-  .pick-cell .pick-score{font-size:9px;}
-  .pos-num{font-size:11px;}
-  .scroll-table{max-height:600px;}
+  .scoreboard-strip{padding:6px 8px;gap:2px;}
+  .sb-cell{min-width:44px;padding:4px 2px;}
+  .sb-cell .sb-name{font-size:7px;max-width:44px;}
+  .sb-cell .sb-score{font-size:12px;}
+  .stats{gap:8px 16px;padding:10px 8px;}
+  .stat .val{font-size:16px;}
+  .stat .lbl{font-size:7px;letter-spacing:.5px;}
+  .container{padding:8px;}
+  .card{margin-bottom:12px;border-radius:6px;}
+  .card-title{padding:10px 12px;font-size:12px;}
+  .card-title .badge{font-size:9px;padding:2px 7px;}
+  .search{padding:6px 10px;}
+  .search input{padding:6px 10px;font-size:12px;}
+  th{padding:5px 6px;font-size:8px;}
+  td{padding:4px 6px;font-size:10px;}
+  .punter{font-size:10px;}
+  .pick-cell{font-size:9px;}
+  .pick-cell .pick-name{font-size:9px;}
+  .pick-cell .pick-score{font-size:8px;}
+  .pos-num{font-size:10px;}
+  .sc{font-size:11px!important;}
+  .scroll-table{max-height:500px;}
+  .tlb-name{font-size:11px;}
+  .tlb-picked{font-size:8px;padding:1px 4px;}
+  .tlb-rounds{font-size:9px;}
+  .tlb-thru{font-size:9px;}
+  .footer{font-size:9px;padding:12px 8px;}
+  /* Hide less important columns on mobile */
+  .hide-mobile{display:none!important;}
+  /* Weather bar stacks */
+  .weather-bar{flex-direction:column;gap:4px!important;padding:6px 12px!important;}
+  .weather-bar .weather-left{gap:8px!important;}
+  .weather-bar .weather-right{gap:10px!important;font-size:11px!important;flex-wrap:wrap;}
 }
 
 /* Cards */
@@ -737,7 +753,7 @@ tr:hover{background:rgba(255,255,255,.03);}
 <div>
 {% if data.punters %}
 <div class="card">
-  <div class="card-title">Tipping Leaderboard <div style="display:flex;align-items:center;gap:10px;">{% if data.leaderboard.last_updated %}<span style="font-size:10px;color:rgba(255,255,255,.3);font-family:'Inter',sans-serif;font-weight:400;">Updated {{ data.leaderboard.last_updated }}</span>{% endif %}<span class="badge">{{ data.total_entries }} entries</span></div></div>
+  <div class="card-title">Tipping Leaderboard <div style="display:flex;align-items:center;gap:10px;">{% if data.leaderboard.last_updated %}<span id="lastUpdated" data-ts="{{ data.leaderboard.last_updated }}Z" style="font-size:10px;color:rgba(255,255,255,.3);font-family:'Inter',sans-serif;font-weight:400;"></span>{% endif %}<span class="badge">{{ data.total_entries }} entries</span></div></div>
   <div class="search">
     <input type="text" id="searchInput" placeholder="Search punter or player name..." onkeyup="filterTable()">
   </div>
@@ -800,8 +816,8 @@ tr:hover{background:rgba(255,255,255,.03);}
         <th>Player</th>
         <th class="c">Score</th>
         <th class="c">Thru</th>
-        <th class="r">Today</th>
-        <th class="r">Rounds</th>
+        <th class="r hide-mobile">Today</th>
+        <th class="r hide-mobile">Rounds</th>
       </tr>
     </thead>
     <tbody>
@@ -892,6 +908,23 @@ function filterTable(){
     tr.style.display=(tr.dataset.search||'').includes(q)?'':'none';
   });
 }
+
+// Relative time for "Updated X ago"
+(function(){
+  var el=document.getElementById('lastUpdated');
+  if(!el)return;
+  var ts=new Date(el.dataset.ts).getTime();
+  function update(){
+    var diff=Math.floor((Date.now()-ts)/1000);
+    var txt;
+    if(diff<60) txt=diff+'s ago';
+    else if(diff<3600) txt=Math.floor(diff/60)+'m ago';
+    else txt=Math.floor(diff/3600)+'h '+Math.floor((diff%3600)/60)+'m ago';
+    el.textContent='Updated '+txt;
+  }
+  update();
+  setInterval(update,10000);
+})();
 </script>
 </body>
 </html>
