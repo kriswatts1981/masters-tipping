@@ -594,20 +594,23 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
   .stat .lbl{font-size:7px;letter-spacing:.5px;}
   .container{padding:8px;}
   .card{margin-bottom:10px;border-radius:6px;}
-  .card-title{padding:8px 10px;font-size:12px;}
-  .card-title .badge{font-size:9px;padding:2px 7px;}
+  .card-title{padding:8px 10px;font-size:11px;flex-wrap:wrap;gap:4px;}
+  .card-title .badge{font-size:8px;padding:2px 6px;}
   .search{padding:6px 8px;}
   .search input{padding:6px 10px;font-size:12px;}
   th{padding:5px 4px;font-size:7px;letter-spacing:.8px;}
   td{padding:5px 4px;font-size:11px;}
-  .punter{font-size:11px;}
-  .pos-num{font-size:10px;min-width:18px;}
+  .punter{font-size:11px;white-space:normal!important;max-width:120px;}
+  .pos-num{font-size:10px;min-width:16px;}
   .sc{font-size:11px!important;}
-  .scroll-table{max-height:70vh;overflow-y:auto;}
-  /* Tipping table: hide pool columns on mobile, show compact view */
+  .scroll-table{max-height:70vh;overflow-y:auto;overflow-x:hidden;}
+  /* Tipping table: hide pool columns + payout on mobile */
   .pick-col{display:none!important;}
-  #leaderboardTable{min-width:0!important;}
+  .payout-col{display:none!important;}
+  #leaderboardTable{min-width:0!important;table-layout:auto;}
   .money{font-size:11px;}
+  /* Hide mover column on small screens */
+  .mover-col{width:24px;}
   /* Tournament leaderboard — hide Thru on mobile too, just Pos/Player/Score */
   .tlb-name{font-size:11px;}
   .tlb-picked{font-size:7px;padding:1px 3px;}
@@ -810,7 +813,7 @@ tr:hover{background:rgba(255,255,255,.03);}
 <div>
 {% if data.punters %}
 <div class="card">
-  <div class="card-title">Tipping Leaderboard <div style="display:flex;align-items:center;gap:10px;">{% if data.leaderboard.last_updated %}<span id="lastUpdated" data-ts="{{ data.leaderboard.last_updated }}Z" style="font-size:10px;color:rgba(255,255,255,.3);font-family:'Inter',sans-serif;font-weight:400;"></span>{% endif %}<span class="badge">{{ data.total_entries }} entries</span></div></div>
+  <div class="card-title"><span>Tipping Leaderboard</span> <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">{% if data.leaderboard.last_updated %}<span id="lastUpdated" data-ts="{{ data.leaderboard.last_updated }}Z" style="font-size:10px;color:rgba(255,255,255,.3);font-family:'Inter',sans-serif;font-weight:400;"></span>{% endif %}<span class="badge">{{ data.total_entries }}</span></div></div>
   <div class="search">
     <input type="text" id="searchInput" placeholder="Search punter or player name..." onkeyup="filterTable()">
   </div>
@@ -827,7 +830,7 @@ tr:hover{background:rgba(255,255,255,.03);}
         <th class="pick-col">Pool 3</th>
         <th class="pick-col">Pool 4</th>
         <th class="pick-col">Pool 5</th>
-        <th class="r" style="width:60px">Payout</th>
+        <th class="r payout-col" style="width:60px">Payout</th>
       </tr>
     </thead>
     <tbody>
@@ -841,7 +844,7 @@ tr:hover{background:rgba(255,255,255,.03);}
       <td class="pick-cell pick-col"><span class="pick-name {% if pl.cut %}cut-txt{% elif pl.capped %}cap-txt{% endif %}">{{ pl.name.split(' ')[-1] }}</span> <span class="pick-score sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.capped %}*{% endif %}{% if pl.cut %} CUT{% endif %}</span></td>
       {% endfor %}
       {% for _ in range(5 - p.players|length) %}<td class="pick-cell pick-col">-</td>{% endfor %}
-      <td class="r money">{% if p.payout > 0 %}<strong>${{ "{:,.0f}".format(p.payout) }}</strong>{% endif %}</td>
+      <td class="r money payout-col">{% if p.payout > 0 %}<strong>${{ "{:,.0f}".format(p.payout) }}</strong>{% endif %}</td>
     </tr>
     {% endfor %}
     </tbody>
