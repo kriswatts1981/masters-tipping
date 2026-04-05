@@ -689,8 +689,8 @@ tr:hover{background:rgba(255,255,255,.03);}
 .fav-star{cursor:pointer;font-size:12px;color:rgba(255,255,255,.15);transition:color .15s;vertical-align:middle;margin-right:2px;}
 .fav-star:hover{color:rgba(255,215,0,.5);}
 .fav-star.active{color:#ffd700;}
-.fav-row{background:rgba(255,215,0,.03)!important;}
-.fav-separator td{padding:0!important;height:2px;background:rgba(255,215,0,.15)!important;border:none!important;}
+.fav-row{background:rgba(255,215,0,.04)!important;}
+.fav-separator td{padding:4px 10px!important;background:rgba(0,0,0,.15)!important;border:none!important;font-size:9px;color:rgba(255,215,0,.4);letter-spacing:1px;text-transform:uppercase;border-top:1px solid rgba(255,215,0,.15)!important;border-bottom:1px solid rgba(255,215,0,.15)!important;}
 
 .footer{text-align:center;padding:16px;font-size:10px;color:rgba(255,255,255,.2);letter-spacing:.5px;}
 .empty{text-align:center;padding:40px;color:rgba(255,255,255,.3);}
@@ -842,7 +842,7 @@ tr:hover{background:rgba(255,255,255,.03);}
     </thead>
     <tbody>
     {% for p in data.punters %}
-    <tr class="{% if p.payout > 0 %}payout-row{% endif %}" data-search="{{ p.name|lower }} {% for pl in p.players %}{{ pl.name|lower }} {% endfor %}" data-punter="{{ p.name }}">
+    <tr class="{% if p.payout > 0 %}payout-row{% endif %}" data-search="{{ p.name|lower }} {% for pl in p.players %}{{ pl.name|lower }} {% endfor %}" data-punter="{{ p.name }}" data-order="{{ loop.index0 }}">
       <td style="padding-right:0"><span class="pos-num">{{ p.position }}</span></td>
       <td class="c" style="font-size:10px;font-weight:700;padding-left:0;">{% if p.mover > 0 %}<span style="color:#4ade80;">&#9650;{{ p.mover }}</span>{% elif p.mover < 0 %}<span style="color:#f87171;">&#9660;{{ p.mover|abs }}</span>{% else %}<span style="color:rgba(255,255,255,.25);">-</span>{% endif %}</td>
       <td class="punter"><span class="fav-star" onclick="toggleFav(this)" title="Add to favourites">&#9734;</span> {{ p.name }}</td>
@@ -988,23 +988,28 @@ function reorderFavs(){
   if(old)old.remove();
   // Reset fav-row styling
   tbody.querySelectorAll('tr').forEach(function(tr){tr.classList.remove('fav-row');});
-  if(!favs.length)return;
-  // Move fav rows to top (preserve their relative order)
+  // Get all data rows sorted by original order
   var rows=Array.from(tbody.querySelectorAll('tr[data-punter]'));
+  rows.sort(function(a,b){return parseInt(a.dataset.order)-parseInt(b.dataset.order);});
   var favRows=[];var otherRows=[];
   rows.forEach(function(tr){
     if(favs.indexOf(tr.dataset.punter)>=0){favRows.push(tr);tr.classList.add('fav-row');}
     else{otherRows.push(tr);}
   });
-  // Create separator
-  if(favRows.length&&otherRows.length){
-    var sep=document.createElement('tr');
-    sep.className='fav-separator';
-    var cols=rows[0]?rows[0].children.length:5;
-    sep.innerHTML='<td colspan="'+cols+'"></td>';
+  // Rebuild tbody: favs first, separator, then rest in original order
+  if(favRows.length){
     favRows.forEach(function(r){tbody.appendChild(r);});
-    tbody.appendChild(sep);
+    if(otherRows.length){
+      var sep=document.createElement('tr');
+      sep.className='fav-separator';
+      var cols=rows[0]?rows[0].children.length:5;
+      sep.innerHTML='<td colspan="'+cols+'">All Punters</td>';
+      tbody.appendChild(sep);
+    }
     otherRows.forEach(function(r){tbody.appendChild(r);});
+  } else {
+    // No favs — restore original order
+    rows.forEach(function(r){tbody.appendChild(r);});
   }
 }
 
