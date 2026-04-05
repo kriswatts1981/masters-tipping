@@ -612,7 +612,7 @@ tr:hover{background:rgba(255,255,255,.03);}
 
 /* Tournament leaderboard */
 .tlb-pos{font-weight:600;color:rgba(255,255,255,.5);min-width:22px;display:inline-block;font-size:11px;}
-.tlb-name{font-weight:500;white-space:nowrap;font-size:11px;}
+.tlb-name{font-weight:500;font-size:11px;}
 .tlb-picked{font-size:8px;color:#ffd700;background:rgba(255,215,0,.1);padding:1px 4px;border-radius:3px;margin-left:3px;white-space:nowrap;vertical-align:middle;}
 .tlb-rounds{font-size:9px;color:rgba(255,255,255,.4);}
 .tlb-cut-row td{opacity:.4;}
@@ -814,12 +814,12 @@ tr:hover{background:rgba(255,255,255,.03);}
   <table>
     <thead>
       <tr>
-        <th style="width:28px">Pos</th>
+        <th style="width:26px">Pos</th>
         <th>Player</th>
-        <th class="r" style="width:40px">Score</th>
-        <th class="c" style="width:30px">Thru</th>
-        <th class="r hide-narrow" style="width:35px">Today</th>
-        <th class="r hide-narrow" style="width:80px">Rounds</th>
+        <th class="r" style="width:38px">Score</th>
+        <th class="c" style="width:24px">Thru</th>
+        <th class="r hide-narrow" style="width:28px">Tdy</th>
+        <th class="r hide-narrow">Rounds</th>
       </tr>
     </thead>
     <tbody>
