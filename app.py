@@ -534,7 +534,8 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 /* Layout */
 .container{max-width:1400px;margin:0 auto;padding:16px 20px;}
 .grid-2{display:grid;grid-template-columns:68fr 32fr;gap:12px;align-items:start;overflow:hidden;}
-@media(max-width:1024px){.grid-2{grid-template-columns:1fr;}}
+@media(max-width:1400px){.hide-narrow{display:none!important;}}
+@media(max-width:1024px){.grid-2{grid-template-columns:1fr;}.hide-narrow{display:table-cell!important;}}
 @media(max-width:768px){
   .hero-content{padding:20px 12px 16px;}
   .hero h1{font-size:24px;}
@@ -569,6 +570,7 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
   .footer{font-size:9px;padding:12px 8px;}
   /* Hide less important columns on mobile */
   .hide-mobile{display:none!important;}
+  .hide-narrow{display:none!important;}
   /* Weather bar stacks */
   .weather-bar{flex-direction:column;gap:4px!important;padding:6px 12px!important;}
   .weather-bar .weather-left{gap:8px!important;}
@@ -597,13 +599,13 @@ tr:hover{background:rgba(255,255,255,.03);}
 .cap-txt{color:#fb923c;}
 
 /* Tipping table */
-.pos-num{font-weight:700;color:#ffd700;min-width:28px;display:inline-block;}
-.punter{font-weight:600;font-size:13px;}
+.pos-num{font-weight:700;color:#ffd700;}
+.punter{font-weight:600;font-size:13px;white-space:nowrap;}
 .payout-row{background:rgba(255,215,0,.04);}
 .money{color:#ffd700;font-weight:700;}
-.pick-cell{font-size:10px;line-height:1.4;}
-.pick-name{font-weight:500;font-size:10px;}
-.pick-score{font-size:11px;opacity:.75;}
+.pick-cell{font-size:11px;white-space:nowrap;}
+.pick-name{font-weight:500;}
+.pick-score{opacity:.65;margin-left:2px;}
 
 /* Tournament leaderboard */
 .tlb-pos{font-weight:600;color:rgba(255,255,255,.5);min-width:22px;display:inline-block;font-size:11px;}
@@ -830,7 +832,7 @@ tr:hover{background:rgba(255,255,255,.03);}
       <td class="r"><span class="sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.cut %} CUT{% endif %}</span></td>
       <td class="c tlb-thru">{% if pl.thru and pl.thru > 0 and pl.thru < 18 %}{{ pl.thru }}{% elif pl.thru == 18 or pl.thru == 0 %}F{% else %}-{% endif %}</td>
       <td class="r hide-narrow">{% if pl.today and pl.today not in ('-', '') %}<span class="sc {% if pl.today.lstrip().startswith('-') %}under{% elif pl.today == 'E' %}even{% else %}over{% endif %}" style="font-size:11px;">{{ pl.today }}</span>{% else %}<span style="color:rgba(255,255,255,.15);">-</span>{% endif %}</td>
-      <td class="r tlb-rounds hide-mobile" style="white-space:nowrap;font-size:10px;">{{ pl.rounds|join('/') if pl.rounds else '-' }}</td>
+      <td class="r tlb-rounds hide-narrow" style="white-space:nowrap;font-size:10px;">{{ pl.rounds|join('/') if pl.rounds else '-' }}</td>
     </tr>
     {% endfor %}
     </tbody>
