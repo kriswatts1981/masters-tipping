@@ -809,15 +809,15 @@ tr:hover{background:rgba(255,255,255,.03);}
 <div class="card">
   <div class="card-title">Tournament Leaderboard <span class="badge">{{ data.tournament_lb|length }} players</span></div>
   <div class="scroll-table" style="max-height:800px;overflow-x:auto;">
-  <table style="min-width:480px;">
+  <table style="min-width:650px;table-layout:fixed;">
     <thead>
       <tr>
-        <th style="width:32px">Pos</th>
-        <th>Player</th>
-        <th class="c">Score</th>
-        <th class="c">Thru</th>
-        <th class="r">Today</th>
-        <th class="r">Rounds</th>
+        <th style="width:40px">Pos</th>
+        <th style="width:auto">Player</th>
+        <th style="width:55px" class="c">Score</th>
+        <th style="width:40px" class="c">Thru</th>
+        <th style="width:50px" class="r">Today</th>
+        <th style="width:120px" class="r">Rounds</th>
       </tr>
     </thead>
     <tbody>
