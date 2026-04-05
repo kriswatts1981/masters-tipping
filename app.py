@@ -532,7 +532,7 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 
 /* Layout */
 .container{max-width:1400px;margin:0 auto;padding:16px;}
-.grid-2{display:grid;grid-template-columns:3fr 2fr;gap:16px;}
+.grid-2{display:grid;grid-template-columns:68fr 32fr;gap:12px;}
 @media(max-width:1024px){.grid-2{grid-template-columns:1fr;}}
 @media(max-width:768px){
   .hero-content{padding:20px 12px 16px;}
@@ -600,15 +600,15 @@ tr:hover{background:rgba(255,255,255,.03);}
 .punter{font-weight:600;font-size:13px;}
 .payout-row{background:rgba(255,215,0,.04);}
 .money{color:#ffd700;font-weight:700;}
-.pick-cell{font-size:11px;line-height:1.4;}
-.pick-name{font-weight:500;}
-.pick-score{font-size:10px;opacity:.7;}
+.pick-cell{font-size:10px;line-height:1.4;}
+.pick-name{font-weight:500;font-size:10px;}
+.pick-score{font-size:11px;opacity:.75;}
 
 /* Tournament leaderboard */
-.tlb-pos{font-weight:600;color:rgba(255,255,255,.5);min-width:24px;display:inline-block;font-size:11px;}
-.tlb-name{font-weight:500;white-space:nowrap;}
-.tlb-picked{font-size:9px;color:#ffd700;background:rgba(255,215,0,.1);padding:1px 5px;border-radius:3px;margin-left:4px;white-space:nowrap;vertical-align:middle;}
-.tlb-rounds{font-size:10px;color:rgba(255,255,255,.4);}
+.tlb-pos{font-weight:600;color:rgba(255,255,255,.5);min-width:22px;display:inline-block;font-size:11px;}
+.tlb-name{font-weight:500;white-space:nowrap;font-size:11px;}
+.tlb-picked{font-size:8px;color:#ffd700;background:rgba(255,215,0,.1);padding:1px 4px;border-radius:3px;margin-left:3px;white-space:nowrap;vertical-align:middle;}
+.tlb-rounds{font-size:9px;color:rgba(255,255,255,.4);}
 .tlb-cut-row td{opacity:.4;}
 .tlb-thru{font-size:10px;color:rgba(255,255,255,.5);}
 
