@@ -532,7 +532,7 @@ body{background:#006747;color:#fff;font-family:'Inter',sans-serif;min-height:100
 
 /* Layout */
 .container{max-width:1400px;margin:0 auto;padding:16px;}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid-2{display:grid;grid-template-columns:3fr 2fr;gap:16px;}
 @media(max-width:1024px){.grid-2{grid-template-columns:1fr;}}
 @media(max-width:768px){
   .hero-content{padding:20px 12px 16px;}
