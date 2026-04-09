@@ -590,9 +590,10 @@ def calculate_standings():
             if bubble:
                 fun_facts.append(f"{bubble[0]['name']} is the bubble — just missed the money at position {bubble[0]['position']}")
 
-        # Worst total score
-        worst_punter = punter_results[-1]
-        fun_facts.append(f"{worst_punter['name']} brings up the rear at +{worst_punter['total']}" if worst_punter["total"] > 0 else f"{worst_punter['name']} is last at {worst_punter['total']}")
+        # Worst total score (only when scores exist)
+        if has_scores:
+            worst_punter = punter_results[-1]
+            fun_facts.append(f"{worst_punter['name']} brings up the rear at +{worst_punter['total']}" if worst_punter["total"] > 0 else f"{worst_punter['name']} is last at {worst_punter['total']}")
 
         # Best score in a single pick
         best_pick_score = None
@@ -604,8 +605,12 @@ def calculate_standings():
                     best_pick_name = pl["name"]
 
         # Winner's payout
-        winner = punter_results[0]
-        fun_facts.append(f"1st place takes home ${winner['payout']:,.0f} from a ${cfg['buy_in']} entry")
+        if has_scores:
+            winner = punter_results[0]
+            fun_facts.append(f"1st place takes home ${winner['payout']:,.0f} from a ${cfg['buy_in']} entry")
+        else:
+            pool = total_entries * cfg["buy_in"]
+            fun_facts.append(f"${pool:,.0f} prize pool up for grabs from {total_entries:,} x ${cfg['buy_in']} entries")
 
         # How many unique player combos
         combos = set()
