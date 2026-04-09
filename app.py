@@ -707,6 +707,104 @@ def calculate_standings():
         if best_round:
             fun_facts.append(f"Low round of the tournament: {best_round} by {best_round_player}")
 
+        # --- Dynamic in-tournament facts (only when scores exist) ---
+        has_scores = any(p.get("score", 0) != 0 for p in tournament_lb)
+        if has_scores and punter_results:
+            # How many punters in the money
+            in_money = sum(1 for p in punter_results if p.get("payout", 0) > 0)
+            fun_facts.append(f"{in_money:,} punters currently in the money — {total_entries - in_money:,} chasing")
+
+            # Leader's payout
+            leader_punter = punter_results[0]
+            if leader_punter.get("payout", 0) > 0:
+                fun_facts.append(f"{leader_punter['name']} leads and would pocket ${leader_punter['payout']:,.0f} if it ended now")
+
+            # Gap between 1st and last
+            gap = punter_results[-1]["total"] - punter_results[0]["total"]
+            if gap > 0:
+                fun_facts.append(f"{gap} stroke gap between first and last — from {punter_results[0]['total']:+d} to {punter_results[-1]['total']:+d}")
+
+            # How the most popular pick is doing
+            if popular_players:
+                top_name = popular_players[0][0]
+                top_player = next((p for p in tournament_lb if p["name"] == top_name), None)
+                if top_player:
+                    pos = top_player.get("position", "?")
+                    sc = top_player["score"]
+                    sc_str = f"{sc:+d}" if sc != 0 else "E"
+                    fun_facts.append(f"Fan favourite {top_name} sits at {sc_str} ({pos}) — backed by {popular_players[0][1]:,} punters")
+
+            # Hipster pick performance
+            least = [p for p in popular_players if p[1] > 0]
+            if least:
+                hipster = least[-1]
+                hp = next((p for p in tournament_lb if p["name"] == hipster[0]), None)
+                if hp and hp["score"] < 0:
+                    fun_facts.append(f"Hipster hero: {hipster[0]} ({hipster[1]} picks) is outperforming at {hp['score']:+d}")
+                elif hp and hp.get("cut"):
+                    fun_facts.append(f"Hipster heartbreak: {hipster[0]} missed the cut — {hipster[1]} punters feeling it")
+
+            # Players under par count
+            under_par = sum(1 for p in tournament_lb if p["score"] < 0 and not p.get("cut"))
+            over_par = sum(1 for p in tournament_lb if p["score"] > 0 and not p.get("cut"))
+            fun_facts.append(f"Augusta is winning: {over_par} players over par vs {under_par} under par")
+
+            # Cut carnage (after R2)
+            cut_players = [p for p in tournament_lb if p.get("cut")]
+            if cut_players:
+                cut_picks_affected = 0
+                for pr in punter_results:
+                    for pl in pr["players"]:
+                        if pl.get("cut"):
+                            cut_picks_affected += 1
+                            break
+                fun_facts.append(f"{len(cut_players)} players missed the cut — affecting {cut_picks_affected:,} punter teams")
+
+            # All 5 picks made the cut
+            if cut_players:
+                all_made = sum(1 for p in punter_results if not any(pl.get("cut") for pl in p["players"]))
+                pct_made = round(all_made / total_entries * 100, 1)
+                fun_facts.append(f"{all_made:,} punters ({pct_made}%) have all 5 picks still alive after the cut")
+
+            # Highest scoring single pick in the field
+            best_pick_score = None
+            best_pick_player = None
+            for p in punter_results[:100]:
+                for pl in p["players"]:
+                    if not pl.get("cut") and (best_pick_score is None or pl["score"] < best_pick_score):
+                        best_pick_score = pl["score"]
+                        best_pick_player = pl["name"]
+            if best_pick_score is not None and best_pick_score < 0:
+                bp_count = sum(1 for pp in popular_players if pp[0] == best_pick_player)
+                bp_picks = next((pp[1] for pp in popular_players if pp[0] == best_pick_player), 0)
+                fun_facts.append(f"{best_pick_player} is the best individual pick at {best_pick_score:+d} — in {bp_picks:,} teams")
+
+            # Worst pick among popular players (top 10 most selected)
+            if popular_players:
+                worst_pop = None
+                worst_pop_score = None
+                for pp in popular_players[:10]:
+                    tp = next((p for p in tournament_lb if p["name"] == pp[0]), None)
+                    if tp and (worst_pop_score is None or tp["score"] > worst_pop_score):
+                        worst_pop_score = tp["score"]
+                        worst_pop = (pp[0], pp[1], tp["score"])
+                if worst_pop and worst_pop[2] > 0:
+                    fun_facts.append(f"{worst_pop[0]} is letting down {worst_pop[1]:,} punters at +{worst_pop[2]}")
+
+            # Money line — how much you'd win at each position
+            paid_places = cfg.get("payout_places", 20)
+            profit_count = sum(1 for p in punter_results if p.get("payout", 0) > cfg["buy_in"])
+            fun_facts.append(f"{profit_count:,} punters would profit right now — {total_entries - profit_count:,} would lose their ${cfg['buy_in']}")
+
+            # Closest race for the money
+            if paid_places < len(punter_results):
+                last_paid = next((p for p in punter_results if p["position"] == paid_places), None)
+                first_unpaid = next((p for p in punter_results if p["position"] == paid_places + 1), None)
+                if last_paid and first_unpaid:
+                    diff = first_unpaid["total"] - last_paid["total"]
+                    if diff <= 2:
+                        fun_facts.append(f"Battle for the money: only {diff} stroke{'s' if diff != 1 else ''} separating position {paid_places} from {paid_places + 1}")
+
     return {
         "punters": punter_results,
         "leaderboard": lb,
