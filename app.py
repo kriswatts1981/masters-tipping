@@ -1011,30 +1011,29 @@ tr:hover{background:rgba(255,255,255,.03);}
   <div class="stat"><div class="val">{{ data.config.payout_places }}</div><div class="lbl">Paid Places</div></div>
 </div>
 
-<!-- Fun Facts -->
+<!-- Fun Facts Ticker -->
 {% if data.fun_facts %}
-<div style="background:rgba(0,0,0,.2);border-bottom:1px solid rgba(255,215,0,.1);padding:10px 20px;">
-  <div id="funFact" style="font-size:12px;color:rgba(255,255,255,.55);font-family:Inter,sans-serif;text-align:center;min-height:18px;">
-    <span style="color:#ffd700;margin-right:8px;">&#9679;</span>
-    <span id="funFactText"></span>
+<style>
+@keyframes ffscroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.ff-wrap{background:rgba(0,0,0,.2);border-bottom:1px solid rgba(255,215,0,.1);overflow:hidden;height:28px;position:relative;}
+.ff-track{display:flex;white-space:nowrap;animation:ffscroll var(--ff-dur,60s) linear infinite;position:absolute;top:0;left:0;height:100%;align-items:center;}
+.ff-track:hover{animation-play-state:paused;}
+.ff-item{font-size:12px;color:rgba(255,255,255,.55);font-family:Inter,sans-serif;padding:0 40px;flex-shrink:0;}
+.ff-item .ff-dot{color:#ffd700;margin-right:8px;}
+</style>
+<div class="ff-wrap">
+  <div class="ff-track" id="ffTrack">
+    {% for f in data.fun_facts %}<div class="ff-item"><span class="ff-dot">&#9679;</span>{{ f }}</div>{% endfor %}
+    {% for f in data.fun_facts %}<div class="ff-item"><span class="ff-dot">&#9679;</span>{{ f }}</div>{% endfor %}
   </div>
 </div>
 <script>
 (function(){
-  var facts={{ data.fun_facts | tojson }};
-  var i=0;
-  var el=document.getElementById('funFactText');
-  if(!el||!facts.length)return;
-  el.textContent=facts[0];
-  setInterval(function(){
-    i=(i+1)%facts.length;
-    el.style.opacity='0';
-    setTimeout(function(){
-      el.textContent=facts[i];
-      el.style.opacity='1';
-    },400);
-  },6000);
-  el.style.transition='opacity 0.4s ease';
+  var track=document.getElementById('ffTrack');
+  if(!track)return;
+  var items=track.children.length/2;
+  var dur=Math.max(items*8,50);
+  track.style.setProperty('--ff-dur',dur+'s');
 })();
 </script>
 {% endif %}
