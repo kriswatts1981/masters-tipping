@@ -1067,7 +1067,7 @@ tr:hover{background:rgba(255,255,255,.03);}
 <div class="card">
   <div class="card-title"><span>Tipping Leaderboard</span> <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">{% if data.leaderboard.last_updated %}<span id="lastUpdated" data-ts="{{ data.leaderboard.last_updated }}Z" style="font-size:10px;color:rgba(255,255,255,.3);font-family:'Inter',sans-serif;font-weight:400;"></span>{% endif %}<span class="badge">{{ data.total_entries }}</span></div></div>
   <div class="search" style="position:relative;">
-    <input type="text" id="searchInput" placeholder="Search punter or player name..." onkeyup="filterTable()">
+    <input type="text" id="searchInput" placeholder="Search punter name..." onkeyup="filterTable()">
     <span id="searchClear" onclick="document.getElementById('searchInput').value='';filterTable();this.style.display='none';" style="display:none;position:absolute;right:20px;top:50%;transform:translateY(-50%);cursor:pointer;color:rgba(255,255,255,.4);font-size:16px;line-height:1;padding:4px;">&times;</span>
   </div>
   <div class="scroll-table" style="max-height:800px;overflow-x:auto;">
@@ -1118,6 +1118,9 @@ tr:hover{background:rgba(255,255,255,.03);}
 <div>
 <div class="card">
   <div class="card-title">Tournament Leaderboard <span class="badge">{{ data.tournament_lb|length }} players</span></div>
+  <div class="search" style="position:relative;">
+    <input type="text" id="tlbSearch" placeholder="Search player..." onkeyup="filterTlb()" style="width:100%;padding:8px 12px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08);border-radius:6px;color:#e0e8d8;font-size:12px;font-family:Inter,sans-serif;">
+  </div>
   <div class="scroll-table" style="max-height:800px;">
   <table>
     <thead>
@@ -1141,7 +1144,7 @@ tr:hover{background:rgba(255,255,255,.03);}
     </tr>
     {% if cut_shown.append(true) %}{% endif %}{% if cut_shown.pop(0) is not none %}{% endif %}
     {% endif %}
-    <tr class="{% if pl.cut %}tlb-cut-row{% endif %}">
+    <tr class="{% if pl.cut %}tlb-cut-row{% endif %} tlb-row" data-tlb="{{ pl.name|lower }}">
       <td><span class="tlb-pos">{{ pl.position or '-' }}</span></td>
       <td>
         {% if pl.flag_url %}<img src="{{ pl.flag_url }}" alt="{{ pl.country }}" title="{{ pl.country }}" style="width:14px;height:10px;border-radius:1px;object-fit:cover;vertical-align:middle;margin-right:3px;">{% endif %}<span class="tlb-name">{{ pl.name }}</span>{% set pc = data.picked_by_norm.get(pl.name|lower, data.picked_by.get(pl.name, [])) %}{% if pc|length > 0 %} <span class="tlb-picked">{{ pc|length }}</span>{% endif %}
@@ -1289,6 +1292,13 @@ function filterTable(){
   document.querySelectorAll('#leaderboardTable tbody tr').forEach(tr=>{
     if(tr.classList.contains('fav-separator')){tr.style.display=q?'none':'';return;}
     tr.style.display=(tr.dataset.search||'').includes(q)?'':'none';
+  });
+}
+
+function filterTlb(){
+  const q=document.getElementById('tlbSearch').value.toLowerCase();
+  document.querySelectorAll('.tlb-row').forEach(tr=>{
+    tr.style.display=(tr.dataset.tlb||'').includes(q)?'':'none';
   });
 }
 
