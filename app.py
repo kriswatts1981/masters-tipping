@@ -717,12 +717,12 @@ def calculate_standings():
         if amateurs:
             fun_facts.append(f"Leading amateur: {amateurs[0]['name']} at {amateurs[0]['score']}")
 
-        # Best round (lowest stroke total in any round)
+        # Best round (lowest completed round — must be 60-85 range for a real 18-hole score)
         best_round = None
         best_round_player = None
         for p in tournament_lb:
             for i, r in enumerate(p.get("rounds", [])):
-                if r and r > 50 and (best_round is None or r < best_round):
+                if r and 60 <= r <= 85 and (best_round is None or r < best_round):
                     best_round = r
                     best_round_player = f"{p['name']} (R{i+1})"
         if best_round:
