@@ -158,18 +158,35 @@ def fetch_leaderboard():
         return _cache["data"]
 
     cfg = load_config()
-    params = f"tournamentId={cfg['tournament_id']}"
-    if cfg.get("espn_date"):
-        params += f"&dates={cfg['espn_date']}"
-    url = f"{cfg['espn_api']}?{params}"
+    tid = cfg['tournament_id']
+
+    # Fetch BOTH endpoints: scoreboard has correct score strings,
+    # leaderboard has thru/position/tee times
+    scoreboard_scores = {}  # name -> score string ("-5", "+3", "E")
+    try:
+        sb_url = f"https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?tournamentId={tid}"
+        sb_r = requests.get(sb_url, timeout=10)
+        sb_r.raise_for_status()
+        sb_data = sb_r.json()
+        for ev in sb_data.get("events", []):
+            for comp in ev.get("competitions", []):
+                for c in comp.get("competitors", []):
+                    name = c.get("athlete", {}).get("displayName", "")
+                    sc = c.get("score", "E")
+                    if name and isinstance(sc, str):
+                        scoreboard_scores[name] = sc
+    except Exception as e:
+        print(f"ESPN scoreboard fetch (secondary): {e}")
+
+    # Primary: leaderboard endpoint (has thru, position, tee times)
+    url = f"{cfg['espn_api']}?tournamentId={tid}"
     try:
         r = requests.get(url, timeout=15)
         r.raise_for_status()
         data = r.json()
     except Exception as e:
         print(f"ESPN API error: {e}")
-        # Back off — don't hammer a failing API
-        _cache["ts"] = time.time() - CACHE_TTL + 30  # retry in 30s not immediately
+        _cache["ts"] = time.time() - CACHE_TTL + 30
         return _cache["data"] or {}
 
     events = data.get("events", [])
@@ -194,12 +211,16 @@ def fetch_leaderboard():
         flag_data = athlete.get("flag", {})
         country = flag_data.get("alt", "")
         flag_url = flag_data.get("href", "")
-        score_raw = c.get("score", "E")
-        # Leaderboard endpoint returns score as dict {value, displayValue}; scoreboard as string
-        if isinstance(score_raw, dict):
-            score_str = score_raw.get("displayValue", "E")
+        # Prefer scoreboard score (correct relative-to-par string) over leaderboard
+        # Leaderboard displayValue is broken during live play (shows "E" for everyone)
+        if name in scoreboard_scores:
+            score_str = scoreboard_scores[name]
         else:
-            score_str = score_raw
+            score_raw = c.get("score", "E")
+            if isinstance(score_raw, dict):
+                score_str = score_raw.get("displayValue", "E")
+            else:
+                score_str = str(score_raw) if score_raw else "E"
         if score_str in ("-", "", None):
             score_str = "E"
         position = c.get("status", {}).get("position", {}).get("displayName", "")
