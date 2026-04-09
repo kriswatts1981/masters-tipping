@@ -194,11 +194,20 @@ def fetch_leaderboard():
         flag_data = athlete.get("flag", {})
         country = flag_data.get("alt", "")
         flag_url = flag_data.get("href", "")
-        score_str = c.get("score", "E")
+        score_raw = c.get("score", "E")
+        # Leaderboard endpoint returns score as dict {value, displayValue}; scoreboard as string
+        if isinstance(score_raw, dict):
+            score_str = score_raw.get("displayValue", "E")
+        else:
+            score_str = score_raw
+        if score_str in ("-", "", None):
+            score_str = "E"
         position = c.get("status", {}).get("position", {}).get("displayName", "")
         player_status = c.get("status", {}).get("type", {}).get("name", "")
         thru = c.get("status", {}).get("thru", 0)
         today_score = c.get("status", {}).get("todayScore", "")
+        tee_time = c.get("status", {}).get("teeTime", "")
+        tee_detail = c.get("status", {}).get("detail", "")
 
         # Parse total score relative to par
         if score_str == "E":
@@ -230,6 +239,7 @@ def fetch_leaderboard():
             "rounds_strokes": rounds_strokes, "rounds_played": rounds_played,
             "is_cut": is_cut, "position": position, "player_status": player_status,
             "thru": thru, "today": today_score, "country": country, "flag_url": flag_url,
+            "tee_time": tee_time, "tee_detail": tee_detail,
         })
 
     # Determine cut line from R1+R2 scores (relative to par)
@@ -280,6 +290,9 @@ def fetch_leaderboard():
             "cut": is_cut,
             "country": p["country"],
             "flag_url": p["flag_url"],
+            "tee_time": p["tee_time"],
+            "tee_detail": p["tee_detail"],
+            "started": p["thru"] > 0 or p["player_status"] not in ("", "STATUS_SCHEDULED"),
         }
 
     # Calculate positions from scores if ESPN doesn't provide them
@@ -448,7 +461,13 @@ def calculate_standings():
 
     # Build sorted tournament leaderboard for display
     # Sort: made-cut players by score first, then cut players by score
-    tournament_lb = sorted(players.values(), key=lambda x: (x["cut"], x["score"]))
+    # Sort: started players by (cut, score), then not-started by tee time
+    tournament_lb = sorted(players.values(), key=lambda x: (
+        not x.get("started", False),  # started first (False < True)
+        x["cut"],                      # made cut before missed cut
+        x["score"],                    # lowest score first
+        x.get("tee_time", ""),         # earliest tee time for non-started
+    ))
 
     # Track which players are picked and by how many punters
     picked_by = {}
@@ -531,6 +550,9 @@ def calculate_standings():
             o["tournament_score"] = matched["score"]
             o["position"] = matched["position"]
             o["cut"] = matched["cut"]
+            # Use ESPN name to resolve pick counts when odds name differs
+            if o["pick_count"] == 0:
+                o["pick_count"] = len(picked_by.get(matched["name"], []))
         else:
             o["tournament_score"] = None
             o["position"] = ""
@@ -550,20 +572,23 @@ def calculate_standings():
             bottom = least[-1]
             fun_facts.append(f"{bottom[0]} is the hipster pick — only {bottom[1]} entries backed them")
 
-        # Biggest mover up today
-        best_mover = max(punter_results, key=lambda x: x.get("mover", 0))
-        if best_mover["mover"] > 0:
-            fun_facts.append(f"{best_mover['name']} is today's biggest mover — climbed {best_mover['mover']:,} places")
+        # Only show mover/bubble facts once tournament is underway
+        has_scores = any(p["total"] != 0 for p in punter_results)
+        if has_scores:
+            # Biggest mover up today
+            best_mover = max(punter_results, key=lambda x: x.get("mover", 0))
+            if best_mover["mover"] > 0:
+                fun_facts.append(f"{best_mover['name']} is today's biggest mover — climbed {best_mover['mover']:,} places")
 
-        # Biggest drop
-        worst_mover = min(punter_results, key=lambda x: x.get("mover", 0))
-        if worst_mover["mover"] < 0:
-            fun_facts.append(f"{worst_mover['name']} had the toughest day — dropped {abs(worst_mover['mover']):,} places")
+            # Biggest drop
+            worst_mover = min(punter_results, key=lambda x: x.get("mover", 0))
+            if worst_mover["mover"] < 0:
+                fun_facts.append(f"{worst_mover['name']} had the toughest day — dropped {abs(worst_mover['mover']):,} places")
 
-        # Just missed the money (bubble)
-        bubble = [p for p in punter_results if p["position"] == cfg["payout_places"] + 1]
-        if bubble:
-            fun_facts.append(f"{bubble[0]['name']} is the bubble — just missed the money at position {bubble[0]['position']}")
+            # Just missed the money (bubble)
+            bubble = [p for p in punter_results if p["position"] == cfg["payout_places"] + 1]
+            if bubble:
+                fun_facts.append(f"{bubble[0]['name']} is the bubble — just missed the money at position {bubble[0]['position']}")
 
         # Worst total score
         worst_punter = punter_results[-1]
@@ -601,10 +626,65 @@ def calculate_standings():
             top_duo, duo_count = duos.most_common(1)[0]
             fun_facts.append(f"{top_duo[0].split(' ')[-1]} + {top_duo[1].split(' ')[-1]} is the most popular combo — picked together {duo_count:,} times")
 
+        # Most popular full 5-player combination
+        combo_counter = Counter()
+        for p in punter_results:
+            combo = tuple(sorted(pl["name"] for pl in p["players"]))
+            combo_counter[combo] += 1
+        if combo_counter:
+            top_combo, top_combo_count = combo_counter.most_common(1)[0]
+            if top_combo_count > 1:
+                short_names = " / ".join(n.split(" ")[-1] for n in top_combo)
+                fun_facts.append(f"{top_combo_count} punters picked the exact same team: {short_names}")
+
+        # Pool-level stats: most popular per pool
+        pool_picks = {}
+        for p in punter_results:
+            for i, pl in enumerate(p["players"]):
+                pool_picks.setdefault(i, Counter())[pl["name"]] += 1
+        for pool_idx, ctr in sorted(pool_picks.items()):
+            top_name, top_ct = ctr.most_common(1)[0]
+            pool_label = f"Pool {pool_idx + 1}" if pool_idx < 5 else f"Pool {pool_idx + 1}"
+            pct = round(top_ct / total_entries * 100, 1)
+            fun_facts.append(f"{top_name.split(' ')[-1]} dominates {pool_label} — chosen by {pct}% of punters")
+
+        # Countdown to tournament (pre-tournament only)
+        import datetime
+        now_utc = datetime.datetime.utcnow()
+        # R1 starts approx 7:40 AM ET = 11:40 UTC on April 9
+        r1_start = datetime.datetime(2026, 4, 9, 11, 40, 0)
+        if now_utc < r1_start:
+            delta = r1_start - now_utc
+            hours = int(delta.total_seconds() // 3600)
+            mins = int((delta.total_seconds() % 3600) // 60)
+            if hours > 0:
+                fun_facts.insert(0, f"First tee in {hours}h {mins}m — Round 1 starts Thursday morning at Augusta")
+            else:
+                fun_facts.insert(0, f"First tee in {mins} minutes!")
+
+        # Average picks per player
+        unique_players_picked = len([p for p in popular_players if p[1] > 0])
+        fun_facts.append(f"{unique_players_picked} of 91 players in the field were selected by at least one punter")
+
+        # Players nobody picked
+        all_in_field = set(p["name"] for p in tournament_lb) if tournament_lb else set()
+        all_picked = set(p[0] for p in popular_players if p[1] > 0)
+        unpicked = all_in_field - all_picked
+        if unpicked and len(unpicked) <= 8:
+            fun_facts.append(f"Not backed by anyone: {', '.join(sorted(unpicked))}")
+        elif unpicked:
+            fun_facts.append(f"{len(unpicked)} players in the field weren't selected by a single punter")
+
+        # Rory stat (defending champ)
+        rory_picks = next((p for p in popular_players if "McIlroy" in p[0]), None)
+        if rory_picks:
+            fun_facts.append(f"Defending champion Rory McIlroy features in {rory_picks[1]:,} teams ({rory_picks[2]}%)")
+
     # Tournament facts
     if tournament_lb:
         leader = tournament_lb[0]
-        fun_facts.append(f"{leader['name']} leads the tournament at {leader['score']}")
+        if leader.get("started", False):
+            fun_facts.append(f"{leader['name']} leads the tournament at {leader['score']}")
 
         # Leading amateur
         amateurs = [p for p in tournament_lb if "(a)" in p.get("name", "")]
@@ -1062,8 +1142,8 @@ tr:hover{background:rgba(255,255,255,.03);}
       <td>
         {% if pl.flag_url %}<img src="{{ pl.flag_url }}" alt="{{ pl.country }}" title="{{ pl.country }}" style="width:14px;height:10px;border-radius:1px;object-fit:cover;vertical-align:middle;margin-right:3px;">{% endif %}<span class="tlb-name">{{ pl.name }}</span>{% set pc = data.picked_by_norm.get(pl.name|lower, data.picked_by.get(pl.name, [])) %}{% if pc|length > 0 %} <span class="tlb-picked">{{ pc|length }}</span>{% endif %}
       </td>
-      <td class="r"><span class="sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.cut %} CUT{% endif %}</span></td>
-      <td class="c tlb-thru hide-thru-mobile">{% if pl.thru and pl.thru > 0 and pl.thru < 18 %}{{ pl.thru }}{% elif pl.thru == 18 or pl.thru == 0 %}F{% else %}-{% endif %}</td>
+      <td class="r">{% if not pl.started and pl.tee_detail %}<span style="color:rgba(255,255,255,.35);font-size:10px;white-space:nowrap;">{{ pl.tee_detail.replace(' ET','') }}</span>{% else %}<span class="sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.cut %} CUT{% endif %}</span>{% endif %}</td>
+      <td class="c tlb-thru hide-thru-mobile">{% if not pl.started %}-{% elif pl.thru and pl.thru > 0 and pl.thru < 18 %}{{ pl.thru }}{% elif pl.thru == 18 or pl.thru == 0 %}F{% else %}-{% endif %}</td>
       <td class="r hide-narrow">{% if pl.today and pl.today not in ('-', '') %}<span class="sc {% if pl.today.lstrip().startswith('-') %}under{% elif pl.today == 'E' %}even{% else %}over{% endif %}" style="font-size:11px;">{{ pl.today }}</span>{% else %}<span style="color:rgba(255,255,255,.15);">-</span>{% endif %}</td>
       <td class="r tlb-rounds hide-narrow" style="white-space:nowrap;font-size:10px;">{{ pl.rounds|join('/') if pl.rounds else '-' }}</td>
     </tr>
@@ -1080,31 +1160,31 @@ tr:hover{background:rgba(255,255,255,.03);}
 {% if data.odds %}
 <div class="card" style="margin-top:20px;">
   <div class="card-title">Player Pools & Odds <span class="badge">Sportsbet</span></div>
-  <div class="pools-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0;border-top:1px solid rgba(255,255,255,.06);">
-    {% set pools = {1: 'Pool 1 (Top 14)', 2: 'Pool 2 (15-34)', 3: 'Pool 3 (35-64)', 4: 'Pool 4 (65-90)'} %}
+  <div class="pools-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;border-top:1px solid rgba(255,255,255,.06);padding:8px;">
+    {% set pools = {1: 'Pool 1 (Top 14)', 2: 'Pool 2 (15-35)', 3: 'Pool 3 (36-58)', 4: 'Pool 4 (59-91)'} %}
     {% for pool_num in [1,2,3,4] %}
-    <div style="border-right:1px solid rgba(255,255,255,.04);{% if pool_num > 2 %}border-top:1px solid rgba(255,255,255,.04);{% endif %}">
+    <div style="border:1px solid rgba(255,255,255,.06);border-radius:6px;overflow:hidden;">
       <div style="padding:10px 14px;font-size:11px;font-weight:700;color:#ffd700;background:rgba(255,215,0,.04);border-bottom:1px solid rgba(255,255,255,.06);font-family:'Playfair Display',serif;letter-spacing:.5px;">
         {{ pools[pool_num] }}
         <span style="float:right;font-family:'Inter',sans-serif;font-size:9px;color:rgba(255,255,255,.3);font-weight:500;">
           {% if pool_num == 1 %}Pick 2{% elif pool_num == 2 %}Pick 1{% elif pool_num == 3 %}Pick 1{% else %}Pick 1{% endif %}
         </span>
       </div>
-      <table style="font-size:11px;">
+      <table style="font-size:11px;width:100%;">
         <thead>
           <tr>
-            <th style="padding:6px 10px;">Player</th>
-            <th class="r" style="padding:6px 4px;width:36px;">Odds</th>
-            <th class="r" style="padding:6px 4px;width:40px;">Score</th>
+            <th style="padding:6px 6px;">Player</th>
+            <th class="r" style="padding:6px 2px;width:32px;">Odds</th>
+            <th class="r" style="padding:6px 2px;width:34px;">Score</th>
             <th class="r" style="padding:6px 6px;white-space:nowrap;">Picked</th>
           </tr>
         </thead>
         <tbody>
         {% for o in data.odds if o.pool == pool_num %}
         <tr{% if o.cut %} style="opacity:.4"{% endif %}>
-          <td style="padding:5px 10px;font-weight:500;">{{ o.player }}</td>
-          <td class="r" style="padding:5px 4px;color:rgba(255,255,255,.5);">${{ "%.0f"|format(o.odds) }}</td>
-          <td class="r" style="padding:5px 4px;">
+          <td style="padding:4px 6px;font-weight:500;">{{ o.player }}</td>
+          <td class="r" style="padding:4px 2px;color:rgba(255,255,255,.5);">${{ "%.0f"|format(o.odds) }}</td>
+          <td class="r" style="padding:4px 2px;">
             {% if o.tournament_score is not none %}
             <span class="sc {% if o.tournament_score < 0 %}under{% elif o.tournament_score == 0 %}even{% else %}over{% endif %}">
               {% if o.tournament_score > 0 %}+{% endif %}{{ o.tournament_score if o.tournament_score != 0 else 'E' }}{% if o.cut %} CUT{% endif %}

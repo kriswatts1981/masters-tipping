@@ -1,8 +1,8 @@
 {
-  "tournament_id": "401703504",
-  "tournament_name": "The Masters 2025",
+  "tournament_id": "401811941",
+  "tournament_name": "The Masters 2026",
   "buy_in": 50,
   "payout_places": 20,
-  "espn_api": "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard",
-  "espn_date": "20250410"
+  "espn_api": "https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard",
+  "espn_date": ""
 }
