@@ -313,7 +313,7 @@ def fetch_leaderboard():
             "flag_url": p["flag_url"],
             "tee_time": p["tee_time"],
             "tee_detail": p["tee_detail"],
-            "started": p["thru"] > 0 or p["player_status"] not in ("", "STATUS_SCHEDULED"),
+            "started": p["thru"] > 0 or p["player_status"] not in ("", "STATUS_SCHEDULED") or len(p["rounds_strokes"]) > 0,
         }
 
     # Calculate positions from scores if ESPN doesn't provide them
