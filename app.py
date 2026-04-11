@@ -247,13 +247,10 @@ def fetch_leaderboard():
             if val and val > 50:  # sanity check — real round scores are 60-85
                 rounds_strokes.append(int(val))
 
-        # Detect cut: player has fewer completed rounds than expected
-        # ESPN gives cut players only 2 rounds of data
+        # Detect cut: trust ESPN's STATUS_CUT. Inferring from round count
+        # falsely flags made-cut players who haven't teed off for R3 yet.
         rounds_played = len(rounds_strokes)
-        is_cut = (current_round >= 3 or status_type in ("STATUS_FINAL", "STATUS_PLAY_COMPLETE")) and rounds_played <= 2 and current_round > 2
-        # Also check ESPN's status field as backup
-        if player_status == "cut":
-            is_cut = True
+        is_cut = player_status == "STATUS_CUT" or position == "CUT"
 
         player_data_list.append({
             "name": name, "score_str": score_str, "total_score": total_score,
@@ -481,13 +478,13 @@ def calculate_standings():
     payouts = payouts_per_pos
 
     # Build sorted tournament leaderboard for display
-    # Sort: made-cut players by score first, then cut players by score
-    # Sort: started players by (cut, score), then not-started by tee time
+    # Sort: made-cut players first (by score), then missed-cut players.
+    # Not-started made-cut players (yet to tee off) stay in their score position.
     tournament_lb = sorted(players.values(), key=lambda x: (
-        not x.get("started", False),  # started first (False < True)
         x["cut"],                      # made cut before missed cut
         x["score"],                    # lowest score first
-        x.get("tee_time", ""),         # earliest tee time for non-started
+        not x.get("started", False),   # started ahead of not-started on tie
+        x.get("tee_time", ""),         # earliest tee time as final tiebreaker
     ))
 
     # Track which players are picked and by how many punters
@@ -1213,7 +1210,7 @@ tr:hover{background:rgba(255,255,255,.03);}
       <td class="punter"><span class="fav-star" onclick="toggleFav(this)" title="Add to favourites">&#9734;</span> {{ p.name }}</td>
       <td class="c"><span class="sc {% if p.total < 0 %}under{% elif p.total == 0 %}even{% else %}over{% endif %}" style="font-size:14px;">{% if p.total > 0 %}+{% endif %}{{ p.total if p.total != 0 else 'E' }}</span></td>
       {% for pl in p.players %}
-      <td class="pick-cell pick-col"><span class="pick-name {% if pl.cut %}cut-txt{% elif pl.capped %}cap-txt{% endif %}">{{ pl.name.split(' ')[-1] }}</span> <span class="pick-score sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.capped %}*{% endif %}{% if pl.cut %} CUT{% endif %}</span></td>
+      <td class="pick-cell pick-col"><span class="pick-name {% if pl.cut %}cut-txt{% elif pl.capped %}cap-txt{% endif %}">{{ pl.name.split(' ')[-1] }}</span> <span class="pick-score sc {% if pl.score < 0 %}under{% elif pl.score == 0 %}even{% else %}over{% endif %}">{% if pl.score > 0 %}+{% endif %}{{ pl.score if pl.score != 0 else 'E' }}{% if pl.capped %}*{% endif %}</span></td>
       {% endfor %}
       {% for _ in range(5 - p.players|length) %}<td class="pick-cell pick-col">-</td>{% endfor %}
       <td class="r money payout-col">{% if p.payout > 0 %}<strong>${{ "{:,.0f}".format(p.payout) }}</strong>{% endif %}</td>
@@ -1258,7 +1255,7 @@ tr:hover{background:rgba(255,255,255,.03);}
     {% if pl.cut and not cut_shown[0] and data.leaderboard.cut_line is not none %}
     <tr class="tlb-cut-divider">
       <td colspan="6" style="padding:6px 10px;background:rgba(0,0,0,.2);border-top:2px solid rgba(255,100,100,.3);border-bottom:1px solid rgba(255,255,255,.06);font-size:10px;color:rgba(255,255,255,.45);font-style:italic;letter-spacing:.3px;">
-        Projected cut at {{ "+" if data.leaderboard.cut_line > 0 }}{{ data.leaderboard.cut_line if data.leaderboard.cut_line != 0 else "E" }} &mdash; players below missed the cut
+        Cut line at {{ "+" if data.leaderboard.cut_line > 0 }}{{ data.leaderboard.cut_line if data.leaderboard.cut_line != 0 else "E" }} &mdash; players below missed the cut
       </td>
     </tr>
     {% if cut_shown.append(true) %}{% endif %}{% if cut_shown.pop(0) is not none %}{% endif %}
