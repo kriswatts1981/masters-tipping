@@ -226,7 +226,14 @@ def fetch_leaderboard():
         position = c.get("status", {}).get("position", {}).get("displayName", "")
         player_status = c.get("status", {}).get("type", {}).get("name", "")
         thru = c.get("status", {}).get("thru", 0)
-        today_score = c.get("status", {}).get("todayScore", "")
+        # Today's score comes from the current round's linescore displayValue
+        # (ESPN has no top-level todayScore field). Fall back to status.todayDetail.
+        today_score = ""
+        _ls_all = c.get("linescores", [])
+        if current_round and 0 < current_round <= len(_ls_all):
+            today_score = _ls_all[current_round - 1].get("displayValue", "") or ""
+        if not today_score:
+            today_score = c.get("status", {}).get("todayDetail", "") or ""
         tee_time = c.get("status", {}).get("teeTime", "")
         tee_detail = c.get("status", {}).get("detail", "")
 
